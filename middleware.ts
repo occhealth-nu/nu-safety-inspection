@@ -1,13 +1,31 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { configProblems, env } from "@/lib/env";
 
-const PUBLIC_PATHS = ["/login", "/auth", "/manifest.webmanifest", "/sw.js", "/offline.html", "/icons", "/api/cron"];
+const PUBLIC_PATHS = ["/login", "/auth", "/manifest.webmanifest", "/sw.js", "/offline.html", "/icons", "/api/cron", "/api/health", "/setup-check"];
 
 export async function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+  const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + "/"));
+  // ตั้งค่าไม่ครบ/ผิดรูปแบบ → พาไปหน้าตรวจการตั้งค่า (ไม่ปล่อยให้เข้าหน้าที่ต้องเข้าสู่ระบบ)
+  if (configProblems().length) {
+    if (isPublic) return NextResponse.next({ request });
+    return NextResponse.redirect(new URL("/setup-check", request.url));
+  }
+  try {
+    return await withSession(request, path, isPublic);
+  } catch (e) {
+    console.error("[middleware]", e);
+    if (isPublic) return NextResponse.next({ request });
+    if (path.startsWith("/api/")) return NextResponse.json({ ok: false, code: "AUTH_UNAVAILABLE", message: "ระบบยืนยันตัวตนไม่พร้อมใช้งานชั่วคราว" }, { status: 503 });
+    return NextResponse.redirect(new URL("/setup-check?from=middleware", request.url));
+  }
+}
+
+async function withSession(request: NextRequest, path: string, isPublic: boolean) {
   let response = NextResponse.next({ request });
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return response;
+  const url = env.supabaseUrl;
+  const key = env.supabaseAnonKey;
 
   const supabase = createServerClient(url, key, {
     cookies: {
@@ -21,8 +39,6 @@ export async function middleware(request: NextRequest) {
   });
   // getUser() ตรวจ token กับ Auth server ทุกครั้ง (ไม่เชื่อ cookie อย่างเดียว)
   const { data: { user } } = await supabase.auth.getUser();
-  const path = request.nextUrl.pathname;
-  const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + "/"));
   if (!user && !isPublic) {
     if (path.startsWith("/api/")) {
       return NextResponse.json({ ok: false, code: "UNAUTHENTICATED", message: "กรุณาเข้าสู่ระบบ" }, { status: 401 });

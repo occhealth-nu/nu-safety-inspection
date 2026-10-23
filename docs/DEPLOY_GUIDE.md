@@ -165,6 +165,7 @@ Supabase → **Authentication → URL Configuration**
 
 | อาการ | สาเหตุ / วิธีแก้ |
 |---|---|
+| เปิดเว็บแล้วขึ้น `500 MIDDLEWARE_INVOCATION_FAILED` หรืออยากตรวจว่าตั้งค่าครบไหม | เปิด `https://ที่อยู่เว็บ/setup-check` — แสดงรายการตรวจ ✓/✗ ของแต่ละค่า (ไม่แสดงค่าลับ) แก้ค่าที่ ✗ แล้ว Redeploy |
 | Vercel ขึ้น `INVALID_CRON_SECRET … not valid in HTTP headers` | `CRON_SECRET` มีช่องว่าง/ขึ้นบรรทัดใหม่/ภาษาไทย/สัญลักษณ์ → แก้เป็นตัวอักษรอังกฤษและตัวเลขล้วน แล้ว Redeploy |
 | Vercel Deploy ไม่ผ่าน ขึ้น error เกี่ยวกับ `NEXT_PUBLIC_SUPABASE_URL` | ยังไม่ได้ใส่ Environment Variables หรือพิมพ์ชื่อ Key ผิด → แก้แล้ว Redeploy |
 | เข้าสู่ระบบแล้วขึ้น “อีเมลหรือรหัสผ่านไม่ถูกต้อง” | ตรวจรหัสผ่าน / ผู้ใช้ต้องติ๊ก *Auto Confirm User* ตอนสร้าง (ถ้าลืม: Authentication → Users → คลิกผู้ใช้ → Confirm) |

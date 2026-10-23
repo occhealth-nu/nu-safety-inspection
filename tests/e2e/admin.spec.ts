@@ -114,6 +114,13 @@ test("ผู้ใช้เปลี่ยนรหัสผ่านเอง�
   await p2.getByLabel("รหัสผ่าน").fill("New-Pass-2569-ok");
   await p2.getByRole("button", { name: "เข้าสู่ระบบ", exact: true }).click();
   await p2.waitForURL((u) => !u.pathname.startsWith("/login"));
+  // คืนรหัสผ่านเดิม เพื่อให้รันทดสอบซ้ำได้
+  await p2.goto("/account");
+  await p2.getByLabel(/รหัสผ่านเดิม/).fill("New-Pass-2569-ok");
+  await p2.getByLabel(/^รหัสผ่านใหม่/).fill(PASS);
+  await p2.getByLabel(/ยืนยันรหัสผ่านใหม่/).fill(PASS);
+  await p2.getByRole("button", { name: "เปลี่ยนรหัสผ่าน" }).click();
+  await expect(p2.getByText("เปลี่ยนรหัสผ่านเรียบร้อยแล้ว")).toBeVisible();
   await ctx.close();
 });
 

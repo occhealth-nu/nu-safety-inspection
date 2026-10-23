@@ -5,7 +5,7 @@ const PASS = process.env.DEMO_PASSWORD ?? "Demo-Only-Pass-2569";
 test("ปุ่มเข้าสู่ระบบด้วย Google ส่งไปหน้า Google พร้อมจำกัดโดเมน hd=nu.ac.th", async ({ page }) => {
   // ดักการไปยัง Google (ไม่ส่งคำขอออกนอกเครื่อง) แล้วตรวจพารามิเตอร์ที่ Supabase Auth สร้าง
   let googleUrl = "";
-  page.on("request", (r) => { if (r.url().startsWith("https://accounts.google.com/")) googleUrl = r.url(); });
+  page.on("request", (r) => { if (!googleUrl && r.url().startsWith("https://accounts.google.com/o/oauth2")) googleUrl = r.url(); });
   await page.context().route(/accounts\.google\.com/, (route) => route.fulfill({ status: 200, contentType: "text/html", body: "google-stub" }));
   await page.goto("/login");
   const btn = page.getByRole("button", { name: /เข้าสู่ระบบด้วยบัญชี Google ของมหาวิทยาลัย \(@nu\.ac\.th\)/ });
