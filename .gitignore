@@ -1,0 +1,12 @@
+node_modules
+.next
+.env
+.env.local
+*.log
+test-results
+playwright-report
+tests/e2e/stack/bin
+tests/e2e/.data
+.env.e2e
+tsconfig.tsbuildinfo
+*.zip

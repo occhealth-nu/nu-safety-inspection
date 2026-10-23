@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand: 242 111 33;      /* ค่าเริ่มต้น — ถูกแทนที่ด้วย app_settings.primary_color */
+  --brand-dark: 47 51 55;
+  --ink: 47 51 55;
+  --font-sarabun: "Sarabun";
+  color-scheme: light;
+}
+html { -webkit-text-size-adjust: 100%; }
+body { background: #f6f6f5; color: rgb(var(--ink)); font-family: var(--font-sarabun), system-ui, sans-serif; }
+a { -webkit-tap-highlight-color: transparent; }
+
+@media print {
+  body { background: #fff; }
+  .no-print { display: none !important; }
+  @page { size: A4; margin: 12mm; }
+}
