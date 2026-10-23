@@ -91,6 +91,7 @@ Google Sites ใช้เป็น “ประตูทางเข้า” �
 | Google ขึ้น `redirect_uri_mismatch` | Authorized redirect URI ใน Google Cloud ไม่ตรงกับ Callback URL ของ Supabase (ตรวจตัวอักษรทุกตัว รวม https และ /auth/v1/callback) |
 | กลับมาที่ระบบแล้วขึ้น “ระบบนี้สำหรับบุคลากรเท่านั้น” | อีเมลไม่อยู่ในโดเมนที่อนุญาต — ตรวจช่องโดเมนในตั้งค่าระบบ |
 | เข้าได้แต่ “ยังไม่ได้รับบทบาท” | ผู้ดูแลยังไม่กำหนดสิทธิ์ (ส่วนที่ 4) |
+| กดปุ่ม Google แล้วขึ้น “ไม่พบหน้าที่ต้องการ” | Supabase › Authentication › URL Configuration: **Site URL** = `https://ที่อยู่เว็บ` (ไม่มี path) และ **Redirect URLs** ต้องมี `https://ที่อยู่เว็บ/auth/callback` (หรือ `https://ที่อยู่เว็บ/**`) |
 | ไม่เห็นปุ่ม Google | ยังไม่ได้ตั้ง `NEXT_PUBLIC_SSO_PROVIDER=google` หรือยังไม่ได้ Redeploy |
 | ขึ้น “Unsupported provider” | ยังไม่ได้เปิด Google ใน Supabase (ส่วนที่ 2) |
 

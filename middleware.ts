@@ -6,6 +6,13 @@ const PUBLIC_PATHS = ["/login", "/auth", "/manifest.webmanifest", "/sw.js", "/of
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
+  // ขากลับจาก Google/Supabase ถูกส่งมาผิดหน้า (เช่น Site URL) แต่มีรหัสยืนยันติดมา → ส่งต่อไป /auth/callback
+  const sp = request.nextUrl.searchParams;
+  if (path !== "/auth/callback" && (sp.has("code") || (sp.has("error") && sp.has("error_description")))) {
+    const cb = request.nextUrl.clone();
+    cb.pathname = "/auth/callback";
+    return NextResponse.redirect(cb);
+  }
   const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + "/"));
   // ตั้งค่าไม่ครบ/ผิดรูปแบบ → พาไปหน้าตรวจการตั้งค่า (ไม่ปล่อยให้เข้าหน้าที่ต้องเข้าสู่ระบบ)
   if (configProblems().length) {

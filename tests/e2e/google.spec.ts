@@ -44,3 +44,22 @@ test("ผู้ดูแลลงทะเบียนบุคลากรล�
   await page.goto(`/settings/users?q=${email}`);
   await expect(page.getByText(email)).toBeVisible();
 });
+
+test("ถ้า Supabase ส่งกลับมาผิดหน้า (มี code ติดมา) ระบบส่งต่อไป /auth/callback เอง ไม่ขึ้นหน้าไม่พบ", async ({ page }) => {
+  const res = await page.goto("/some/wrong/path?code=invalid-test-code");
+  expect(res?.status()).toBeLessThan(400);
+  await expect(page).toHaveURL(/\/login\?error=sso/);   // code ทดสอบไม่ถูกต้อง → แจ้งเข้าสู่ระบบไม่สำเร็จ (ไม่ใช่ 404)
+  await expect(page.getByText(/เข้าสู่ระบบด้วยบัญชีมหาวิทยาลัยไม่สำเร็จ/)).toBeVisible();
+});
+
+test("ปุ่ม Google ใช้ที่อยู่เว็บที่เปิดอยู่จริงเป็นปลายทางขากลับ", async ({ page }) => {
+  let authorize = "";
+  page.on("request", (r) => { if (!authorize && r.url().includes("/auth/v1/authorize")) authorize = r.url(); });
+  await page.context().route(/accounts\.google\.com/, (route) => route.fulfill({ status: 200, contentType: "text/html", body: "stub" }));
+  await page.goto("/login");
+  await page.getByRole("button", { name: /เข้าสู่ระบบด้วยบัญชี Google/ }).click();
+  await expect.poll(() => authorize, { timeout: 15000 }).toContain("authorize");
+  const redirectTo = new URL(authorize).searchParams.get("redirect_to") ?? "";
+  expect(redirectTo.startsWith("http://localhost:3000/")).toBeTruthy();
+  expect(redirectTo).toContain("/auth/callback");
+});
