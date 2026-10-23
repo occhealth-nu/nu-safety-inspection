@@ -103,7 +103,7 @@
 | `NEXT_PUBLIC_SUPABASE_URL` | ค่าจากข้อ 1.5 |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ค่าจากข้อ 1.5 |
 | `SUPABASE_SERVICE_ROLE_KEY` | ค่าจากข้อ 1.5 (ความลับ) |
-| `CRON_SECRET` | ข้อความสุ่มยาว ≥ 32 ตัวอักษร (เช่น สร้างจาก https://1password.com/password-generator แบบ Random 40 ตัว ไม่มีสัญลักษณ์) |
+| `CRON_SECRET` | ข้อความสุ่มยาว 32–64 ตัว **ใช้ได้เฉพาะ a–z, A–Z, 0–9** (ห้ามมีช่องว่าง ภาษาไทย หรือสัญลักษณ์) เช่น สร้างจาก https://1password.com/password-generator แบบ Random 40 ตัว ปิด Symbols |
 | `NEXT_PUBLIC_APP_URL` | ใส่ชั่วคราว `https://nu-safety-inspection.vercel.app` (จะแก้ในข้อ 3.6) |
 | `NEXT_PUBLIC_SSO_PROVIDER` | (ใส่ภายหลังเมื่อตั้งค่า Google เสร็จ — ขั้นที่ 3.8) `google` |
 
@@ -165,6 +165,7 @@ Supabase → **Authentication → URL Configuration**
 
 | อาการ | สาเหตุ / วิธีแก้ |
 |---|---|
+| Vercel ขึ้น `INVALID_CRON_SECRET … not valid in HTTP headers` | `CRON_SECRET` มีช่องว่าง/ขึ้นบรรทัดใหม่/ภาษาไทย/สัญลักษณ์ → แก้เป็นตัวอักษรอังกฤษและตัวเลขล้วน แล้ว Redeploy |
 | Vercel Deploy ไม่ผ่าน ขึ้น error เกี่ยวกับ `NEXT_PUBLIC_SUPABASE_URL` | ยังไม่ได้ใส่ Environment Variables หรือพิมพ์ชื่อ Key ผิด → แก้แล้ว Redeploy |
 | เข้าสู่ระบบแล้วขึ้น “อีเมลหรือรหัสผ่านไม่ถูกต้อง” | ตรวจรหัสผ่าน / ผู้ใช้ต้องติ๊ก *Auto Confirm User* ตอนสร้าง (ถ้าลืม: Authentication → Users → คลิกผู้ใช้ → Confirm) |
 | เข้าได้แต่ขึ้น “บัญชีของคุณยังไม่ได้รับบทบาท” | ยังไม่ได้รัน `04_make_first_admin.sql` หรือพิมพ์อีเมลในไฟล์ไม่ตรง |
