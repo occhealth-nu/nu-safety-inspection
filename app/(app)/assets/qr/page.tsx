@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth";
 import { qrSvg } from "@/lib/qr";
+import { appBaseUrl } from "@/lib/origin";
 import { getAppSettings } from "@/lib/settings";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { PrintButton } from "@/components/print-button";
@@ -19,7 +20,8 @@ export default async function QrPrint({ searchParams }: { searchParams: Promise<
   else q = q.eq("id", "00000000-0000-0000-0000-000000000000");
   const { data } = await q;
   const settings = await getAppSettings();
-  const labels = await Promise.all((data ?? []).map(async (a) => ({ ...a, svg: await qrSvg(a.qr_token, 150) })));
+  const base = await appBaseUrl();
+  const labels = await Promise.all((data ?? []).map(async (a) => ({ ...a, svg: await qrSvg(base, a.qr_token, 150) })));
   const large = sp.size === "large";
   return (
     <>

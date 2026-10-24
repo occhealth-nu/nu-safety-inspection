@@ -28,10 +28,10 @@ export async function runHealthChecks(requestHost?: string): Promise<Check[]> {
   const cron = process.env.CRON_SECRET ?? "";
   checks.push({ name: "CRON_SECRET", ok: /^[A-Za-z0-9]{24,128}$/.test(cron),
     detail: !cron ? "ยังไม่ได้ตั้งค่า" : /^[A-Za-z0-9]{24,128}$/.test(cron) ? "ตั้งค่าแล้ว" : "ควรใช้เฉพาะ a–z A–Z 0–9 ยาว 24 ตัวขึ้นไป" });
-  const appHost = (() => { try { return new URL(env.appUrl).host; } catch { return ""; } })();
-  checks.push({ name: "NEXT_PUBLIC_APP_URL", ok: !!appHost && (!requestHost || appHost === requestHost),
-    detail: !appHost ? "ยังไม่ได้ตั้งค่า" : requestHost && appHost !== requestHost
-      ? `ตั้งไว้ ${env.appUrl} แต่เว็บนี้เปิดที่ https://${requestHost} — ถ้าเป็นที่อยู่ถาวร ให้แก้ค่าแล้ว Redeploy (ใช้พิมพ์ QR Code)` : `ใช้ค่า ${env.appUrl}` });
+  const appHost = (() => { try { return cleanValue(process.env.NEXT_PUBLIC_APP_URL) ? new URL(env.appUrl).host : ""; } catch { return ""; } })();
+  checks.push({ name: "NEXT_PUBLIC_APP_URL", ok: !appHost ? null : !requestHost || appHost === requestHost,
+    detail: !appHost ? `ไม่ได้ตั้ง — ใช้โดเมนที่เปิดอยู่${requestHost ? ` (https://${requestHost})` : ""} สำหรับ QR Code` : requestHost && appHost !== requestHost
+      ? `ตั้งไว้ ${env.appUrl} แต่เว็บนี้เปิดที่ https://${requestHost} — ถ้าเป็นที่อยู่ถาวร ให้แก้ค่า (หรือลบตัวแปรนี้ทิ้ง) แล้ว Redeploy (ใช้พิมพ์ QR Code)` : `ใช้ค่า ${env.appUrl}` });
   checks.push({ name: "NEXT_PUBLIC_SSO_PROVIDER", ok: env.ssoProvider ? ["google", "azure", "saml"].includes(env.ssoProvider) : null,
     detail: env.ssoProvider ? `${env.ssoProvider}${env.ssoProvider === "google" ? ` (โดเมน ${env.ssoDomain})` : ""}` : "ไม่ได้ตั้ง — ใช้อีเมล/รหัสผ่านอย่างเดียว" });
 

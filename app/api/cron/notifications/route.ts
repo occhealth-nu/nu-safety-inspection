@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import nodemailer from "nodemailer";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { env } from "@/lib/env";
+import { appBaseUrl } from "@/lib/origin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
     .eq("email_status", "pending").order("created_at").limit(200);
   let sent = 0, failed = 0, skipped = 0;
   const smtpReady = !!process.env.SMTP_HOST;
+  const base = await appBaseUrl();
   const transport = smtpReady ? nodemailer.createTransport({
     host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT ?? 587), secure: Number(process.env.SMTP_PORT) === 465,
     auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD } : undefined,
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
     try {
       await transport.sendMail({
         from: process.env.SMTP_FROM, to, subject: `[NU Safety] ${n.title}`,
-        text: `${n.title}\n\n${n.body ?? ""}\n\n${env.appUrl}${n.link ?? "/notifications"}\n\n— อีเมลอัตโนมัติจากระบบ NU Safety Inspection`,
+        text: `${n.title}\n\n${n.body ?? ""}\n\n${base}${n.link ?? "/notifications"}\n\n— อีเมลอัตโนมัติจากระบบ NU Safety Inspection`,
       });
       await admin.from("notifications").update({ email_status: "sent", email_attempts: n.email_attempts + 1 }).eq("id", n.id);
       sent++;

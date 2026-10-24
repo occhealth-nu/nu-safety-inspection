@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireSession, hasRole, MANAGER_ROLES, INSPECT_ROLES } from "@/lib/auth";
 import { signedUrls } from "@/lib/queries";
 import { qrSvg, qrUrl } from "@/lib/qr";
+import { appBaseUrl } from "@/lib/origin";
 import { AssetPhotos } from "@/components/asset-photo";
 import { Badge, Card, LinkButton, NoAccess, Notice, PageHeader, Table, Td, Th } from "@/components/ui";
 import { ASSET_STATUS_LABELS, CATEGORY_LABELS, FINDING_STATUS_LABELS, FINDING_TONE, FREQUENCY_LABELS, SEVERITY_LABELS, SEVERITY_TONE, TASK_STATUS_LABELS, TASK_TONE } from "@/lib/labels";
@@ -26,7 +27,8 @@ export default async function AssetDetail({ params, searchParams }: { params: Pr
     supabase.from("attachments").select("id, storage_path").eq("entity_type", "asset").eq("entity_id", id),
   ]);
   const urls = await signedUrls((photos.data ?? []).map((p) => p.storage_path));
-  const svg = await qrSvg(a.qr_token, 180);
+  const base = await appBaseUrl();
+  const svg = await qrSvg(base, a.qr_token, 180);
   const canEdit = hasRole(s, MANAGER_ROLES, a.organization_id, (a as unknown as { org_ancestors: string[] }).org_ancestors);
   const today = todayBangkok();
   return (
@@ -67,7 +69,7 @@ export default async function AssetDetail({ params, searchParams }: { params: Pr
             <div className="rounded-lg border border-gray-200 bg-white p-2" dangerouslySetInnerHTML={{ __html: svg }} />
             <p className="mt-2 font-mono text-lg font-bold">{a.code}</p>
             <p className="text-sm">{a.name}</p>
-            <p className="mt-2 break-all text-xs text-gray-500">{qrUrl(a.qr_token)}</p>
+            <p className="mt-2 break-all text-xs text-gray-500">{qrUrl(base, a.qr_token)}</p>
             <p className="mt-2 text-xs text-gray-500">QR ใช้รหัสอ้างอิงถาวร ไม่มีข้อมูลส่วนบุคคล ผู้สแกนต้องเข้าสู่ระบบและมีสิทธิ์ก่อนจึงเห็นรายละเอียด</p>
           </div>
         </Card>

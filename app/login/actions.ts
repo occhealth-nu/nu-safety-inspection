@@ -1,8 +1,8 @@
 "use server";
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
+import { currentOrigin } from "@/lib/origin";
 
 function safeNext(v: FormDataEntryValue | null) {
   const s = typeof v === "string" ? v : "/";
@@ -26,10 +26,7 @@ export async function signInSso(form: FormData) {
   const supabase = await createClient();
   const next = safeNext(form.get("next"));
   // กลับมายังโดเมนที่ผู้ใช้เปิดอยู่จริง (cookie PKCE อยู่ที่โดเมนนี้) — ใช้ NEXT_PUBLIC_APP_URL เป็นค่าสำรอง
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host");
-  const proto = h.get("x-forwarded-proto") ?? (host?.startsWith("localhost") ? "http" : "https");
-  const origin = host ? `${proto}://${host}` : env.appUrl;
+  const origin = (await currentOrigin()) ?? env.appUrl;
   const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(next)}`;
   if (env.ssoProvider === "google") {
     // hd = แนะนำให้ Google แสดงเฉพาะบัญชีองค์กร (ฐานข้อมูลและ /auth/callback ตรวจโดเมนซ้ำเสมอ)
