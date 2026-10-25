@@ -27,7 +27,8 @@ export function AppShell({ nav, children, user, unread, brand }: {
         // eslint-disable-next-line @next/next/no-img-element
         <img src={brand.logoUrl} alt={brand.university} className="h-9 w-9 object-contain" />
       ) : (
-        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand text-sm font-bold text-white" aria-hidden>NU</span>
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src="/nu-logo.png" alt="ตรามหาวิทยาลัยนเรศวร" className="h-9 w-9 object-contain" />
       )}
       <span className="leading-tight">
         <span className="block text-sm font-bold text-ink">{brand.appName}</span>

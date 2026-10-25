@@ -24,7 +24,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             // eslint-disable-next-line @next/next/no-img-element
             <img src={s.logo_url} alt={s.university_name_th} className="mx-auto mb-3 h-16 w-16 object-contain" />
           ) : (
-            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand text-lg font-bold text-white" aria-hidden>NU</div>
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/nu-logo.png" alt="ตรามหาวิทยาลัยนเรศวร" className="mx-auto mb-3 h-20 w-20 object-contain" />
           )}
           <h1 className="text-2xl font-bold text-ink">{s.app_name}</h1>
           <p className="text-sm text-gray-600">ระบบการตรวจความปลอดภัย {s.university_name_th}</p>

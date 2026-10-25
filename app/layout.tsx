@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   title: { default: "NU Safety Inspection — ระบบการตรวจความปลอดภัย", template: "%s | NU Safety Inspection" },
   description: "ระบบการตรวจความปลอดภัย มหาวิทยาลัยนเรศวร",
   manifest: "/manifest.webmanifest",
-  icons: { icon: "/icons/icon.svg", apple: "/icons/icon-192.png" },
+  icons: { icon: "/icons/favicon.png", apple: "/icons/icon-192.png" },
 };
 
 export const viewport: Viewport = { themeColor: "#F26F21", width: "device-width", initialScale: 1 };

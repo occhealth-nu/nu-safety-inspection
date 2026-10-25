@@ -2,9 +2,9 @@
 // - แคชเฉพาะไฟล์คงที่ (JS/CSS/ฟอนต์/ไอคอน) เพื่อให้เปิดแอปได้เร็วขึ้น
 // - ไม่แคชข้อมูลจากฐานข้อมูล และ "ไม่รองรับการส่งผลตรวจแบบออฟไลน์"
 // - เมื่อออฟไลน์และเปิดหน้าใหม่ จะแสดง /offline.html (ฉบับร่างที่กรอกค้างยังอยู่ใน localStorage ของหน้าตรวจ)
-const CACHE = "nu-safety-static-v1";
+const CACHE = "nu-safety-static-v2";
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/offline.html", "/icons/icon.svg"])).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/offline.html", "/icons/favicon.png", "/nu-logo.png"])).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", (e) => {
   e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
