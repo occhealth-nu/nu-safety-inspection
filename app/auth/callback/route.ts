@@ -7,16 +7,22 @@ export async function GET(request: NextRequest) {
   const code = url.searchParams.get("code");
   const next = url.searchParams.get("next") ?? "/";
   const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/";
-  const fail = (reason: string) => NextResponse.redirect(new URL(`/login?error=${reason}`, url.origin));
+  // detail = ข้อความจาก Supabase (ไม่มีข้อมูลลับ) แสดงบนหน้าเข้าสู่ระบบเพื่อช่วยหาสาเหตุ
+  const fail = (reason: string, detail?: string) => {
+    const to = new URL("/login", url.origin);
+    to.searchParams.set("error", reason);
+    if (detail?.trim()) to.searchParams.set("detail", detail.trim().slice(0, 200));
+    return NextResponse.redirect(to);
+  };
 
   // Supabase ส่ง error กลับมา เช่น ฐานข้อมูลปฏิเสธบัญชีนอกโดเมน
   const err = `${url.searchParams.get("error") ?? ""} ${url.searchParams.get("error_description") ?? ""}`;
-  if (err.trim()) return fail(/database error|domain|มหาวิทยาลัย/i.test(err) ? "domain" : "sso");
-  if (!code) return fail("sso");
+  if (err.trim()) return fail(/database error|domain|มหาวิทยาลัย/i.test(err) ? "domain" : "sso", err);
+  if (!code) return fail("sso", "no code");
 
   const supabase = await createClient();
   const { error } = await supabase.auth.exchangeCodeForSession(code);
-  if (error) return fail("sso");
+  if (error) return fail("sso", error.message);
 
   const { data: { user } } = await supabase.auth.getUser();
   const { data: allowed } = await supabase.rpc("email_domain_allowed", { p_email: user?.email ?? "" });

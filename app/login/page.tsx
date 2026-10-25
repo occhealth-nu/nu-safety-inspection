@@ -6,7 +6,7 @@ import { NotConnected, buttonClass } from "@/components/ui";
 
 export const metadata = { title: "เข้าสู่ระบบ" };
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string }> }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string; detail?: string }> }) {
   const sp = await searchParams;
   const s = await getAppSettings();
   const ssoReady = env.ssoProvider === "google" || env.ssoProvider === "azure" || (env.ssoProvider === "saml" && !!env.ssoDomain);
@@ -31,7 +31,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <p className="text-sm text-gray-600">ระบบการตรวจความปลอดภัย {s.university_name_th}</p>
         </div>
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          {sp.error && <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">{errors[sp.error] ?? errors.sso}</p>}
+          {sp.error && <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">{errors[sp.error] ?? errors.sso}
+            {sp.detail && <span className="mt-1 block break-words text-xs text-red-700">รายละเอียด: {sp.detail}</span>}</p>}
           {ssoReady ? (
             <form action={signInSso} className="mb-5">
               <input type="hidden" name="next" value={sp.next ?? "/"} />
