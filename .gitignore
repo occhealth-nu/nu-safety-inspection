@@ -10,3 +10,4 @@ tests/e2e/.data
 .env.e2e
 tsconfig.tsbuildinfo
 *.zip
+docs/manual/.capture-state.json

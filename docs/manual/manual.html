@@ -1,0 +1,953 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>คู่มือการใช้งาน NU Safety Inspection</title>
+<style>
+  @font-face { font-family:"SarabunDoc"; font-style:normal; font-weight:400; src:url("../../node_modules/@fontsource/sarabun/files/sarabun-thai-400-normal.woff2") format("woff2"); unicode-range:U+0E01-0E5B, U+200C-200D, U+25CC; }
+  @font-face { font-family:"SarabunDoc"; font-style:normal; font-weight:400; src:url("../../node_modules/@fontsource/sarabun/files/sarabun-latin-400-normal.woff2") format("woff2"); unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+  @font-face { font-family:"SarabunDoc"; font-style:normal; font-weight:600; src:url("../../node_modules/@fontsource/sarabun/files/sarabun-thai-600-normal.woff2") format("woff2"); unicode-range:U+0E01-0E5B, U+200C-200D, U+25CC; }
+  @font-face { font-family:"SarabunDoc"; font-style:normal; font-weight:600; src:url("../../node_modules/@fontsource/sarabun/files/sarabun-latin-600-normal.woff2") format("woff2"); unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+  @font-face { font-family:"SarabunDoc"; font-style:normal; font-weight:700; src:url("../../node_modules/@fontsource/sarabun/files/sarabun-thai-700-normal.woff2") format("woff2"); unicode-range:U+0E01-0E5B, U+200C-200D, U+25CC; }
+  @font-face { font-family:"SarabunDoc"; font-style:normal; font-weight:700; src:url("../../node_modules/@fontsource/sarabun/files/sarabun-latin-700-normal.woff2") format("woff2"); unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+  @font-face { font-family:"SarabunDoc"; font-style:italic; font-weight:400; src:url("../../node_modules/@fontsource/sarabun/files/sarabun-thai-400-italic.woff2") format("woff2"); unicode-range:U+0E01-0E5B, U+200C-200D, U+25CC; }
+  @font-face { font-family:"SarabunDoc"; font-style:italic; font-weight:400; src:url("../../node_modules/@fontsource/sarabun/files/sarabun-latin-400-italic.woff2") format("woff2"); unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+  @font-face { font-family:"SarabunDoc"; font-style:italic; font-weight:600; src:url("../../node_modules/@fontsource/sarabun/files/sarabun-thai-600-italic.woff2") format("woff2"); unicode-range:U+0E01-0E5B, U+200C-200D, U+25CC; }
+  @font-face { font-family:"SarabunDoc"; font-style:italic; font-weight:600; src:url("../../node_modules/@fontsource/sarabun/files/sarabun-latin-600-italic.woff2") format("woff2"); unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+  @font-face { font-family:"SarabunDoc"; font-style:italic; font-weight:700; src:url("../../node_modules/@fontsource/sarabun/files/sarabun-thai-700-italic.woff2") format("woff2"); unicode-range:U+0E01-0E5B, U+200C-200D, U+25CC; }
+  @font-face { font-family:"SarabunDoc"; font-style:italic; font-weight:700; src:url("../../node_modules/@fontsource/sarabun/files/sarabun-latin-700-italic.woff2") format("woff2"); unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+  @page { size: A4; margin: 16mm 17mm 18mm 17mm; }
+  :root { --orange:#F26F21; --navy:#1d2c4b; --navy2:#27406b; --ink:#2b2f36; --muted:#6b7280; --line:#e5e7eb; --red:#E11D48; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin:0; font-family:"SarabunDoc", "DejaVu Sans", sans-serif; font-size:11.4pt; line-height:1.62; color:var(--ink); }
+  p { margin:0 0 7pt; }
+  b, strong { font-weight:700; }
+  .page-break { break-before: page; }
+  h1, h2, h3, h4 { line-height:1.6; break-after: avoid; }
+
+  /* ---------- ปก ---------- */
+  @page cover { margin:0; }
+  .cover { page:cover; position:relative; height:296.5mm; width:210mm; margin:0; padding:0; overflow:hidden; background:linear-gradient(180deg,#fff 0%,#f6f6f7 55%,#eceef2 100%); break-after:page; }
+  .cover .net { position:absolute; right:12mm; top:14mm; width:92mm; opacity:.9; }
+  .cover .tag { position:absolute; left:20mm; top:44mm; background:var(--orange); color:#fff; font-weight:700; font-size:17pt; padding:4mm 9mm; border-radius:3mm; }
+  .cover .title { position:absolute; left:20mm; top:64mm; right:20mm; }
+  .cover .title h1 { margin:0; font-size:35pt; font-weight:700; color:#16181d; letter-spacing:-.5pt; line-height:1.15; }
+  .cover .title .uni { font-size:20pt; color:#333; margin-top:2mm; }
+  .cover .title .rule { width:34mm; height:1.3mm; background:var(--orange); margin:7mm 0 6mm; }
+  .cover .title .en { font-size:27pt; font-weight:700; color:var(--orange); }
+  .cover .seal { position:absolute; left:20mm; top:150mm; width:40mm; }
+  .cover .devices { position:absolute; right:14mm; top:120mm; width:118mm; height:92mm; }
+  .cover .devices .laptop { position:absolute; left:0; top:6mm; width:100mm; border:2.2mm solid #2a2d33; border-radius:3mm 3mm 0 0; box-shadow:0 4mm 10mm rgba(0,0,0,.18); background:#fff; }
+  .cover .devices .laptop img { display:block; width:100%; }
+  .cover .devices .base { position:absolute; left:-6mm; top:66.5mm; width:112mm; height:3.5mm; background:#3a3e46; border-radius:0 0 3mm 3mm; }
+  .cover .devices .phone { position:absolute; right:0; top:0; width:33mm; border:1.8mm solid #1f2126; border-radius:5mm; overflow:hidden; box-shadow:0 4mm 10mm rgba(0,0,0,.25); background:#fff; }
+  .cover .devices .phone img { display:block; width:100%; }
+  .cover .band1 { position:absolute; left:-10mm; right:-10mm; bottom:24mm; height:52mm; background:var(--orange); transform:skewY(-9deg); transform-origin:left; }
+  .cover .band2 { position:absolute; left:-10mm; right:-10mm; bottom:-30mm; height:82mm; background:#2b2d33; transform:skewY(-9deg); transform-origin:left; }
+  .cover .foot { position:absolute; left:20mm; bottom:14mm; color:#fff; font-size:12pt; }
+  .cover .foot b { color:#fff; }
+
+  /* ---------- คำนำ / สารบัญ ---------- */
+  .front h1 { text-align:center; color:var(--navy); font-size:22pt; margin:4mm 0 8mm; }
+  .front p { text-indent:12mm; text-align:justify; }
+  .sign { text-align:right; margin-top:10mm; line-height:1.8; }
+  .sign span { display:inline-block; text-align:center; }
+  .toc a { display:flex; align-items:baseline; color:var(--ink); text-decoration:none; font-size:11pt; line-height:1.85; }
+  .toc a.l1 { font-weight:700; color:var(--navy); margin-top:2.2mm; }
+  .toc a.l2 { padding-left:7mm; }
+  .toc .dots { flex:1; border-bottom:1.2px dotted #9aa1ad; margin:0 2mm; transform:translateY(-1.2mm); }
+  .toc .pg { min-width:8mm; text-align:right; }
+  .toc a.l1 .pg { color:var(--navy); }
+
+  /* ---------- ส่วน ---------- */
+  .part { break-before:page; background:linear-gradient(110deg,var(--navy),var(--navy2)); color:#fff; border-radius:3.5mm; padding:6mm 8mm 6.5mm; margin:0 0 6mm; }
+  .part .k { color:#f7a46b; font-size:11pt; font-weight:600; }
+  .part h1 { margin:1mm 0 0; font-size:21pt; font-weight:700; }
+  .part p.lead { color:#dfe6f3; margin:2mm 0 0; font-size:11pt; }
+  h2 { font-size:15.5pt; color:var(--navy); margin:7mm 0 3mm; display:flex; align-items:center; gap:2.6mm; }
+  h2::before { content:""; width:4.6mm; height:4.6mm; border-radius:50%; background:var(--orange); box-shadow:0 0 0 1.4mm #fde2cf; flex:none; }
+  h3 { font-size:13pt; color:var(--navy2); margin:5mm 0 2mm; font-style:italic; }
+  h4 { font-size:11.6pt; margin:3.5mm 0 1.5mm; color:var(--ink); }
+  ul, ol { margin:0 0 7pt; padding-left:7mm; }
+  li { margin:0.6mm 0; }
+
+  /* ---------- รูป ---------- */
+  body { counter-reset: fig; }
+  figure { margin:3mm 0 3.5mm; text-align:center; break-inside:avoid; }
+  figure img { border:1px solid #d7dbe2; border-radius:2.5mm; box-shadow:0 1.2mm 3.5mm rgba(16,24,40,.12); }
+  img.desk { width:100%; }
+  img.desk.s { width:86%; }
+  img.mob { width:54mm; border-radius:4mm; }
+  .keep { break-inside: avoid; padding-top: 1.5mm; }
+  figcaption { font-style:italic; color:#4b5563; font-size:10.4pt; margin-top:2mm; }
+  figcaption::before { counter-increment: fig; content: "ภาพที่ " counter(fig) " "; }
+  .side { display:flex; gap:7mm; align-items:flex-start; break-inside:avoid; margin:2mm 0 3mm; }
+  .side figure { margin:0; flex:none; }
+  .side .txt { flex:1; padding-top:2mm; }
+  .pair { display:flex; gap:8mm; justify-content:center; break-inside:avoid; }
+  .pair figure { margin:2mm 0; }
+
+  /* ---------- กล่องคำอธิบายหมายเลข ---------- */
+  ol.co { list-style:none; counter-reset: co; background:#f2f4f7; border-radius:2.5mm; padding:3mm 4.5mm 3mm 4.5mm; margin:0 0 4mm; break-inside:avoid; }
+  ol.co > li { counter-increment: co; position:relative; padding-left:8.5mm; margin:1.2mm 0; }
+  ol.co > li::before { content: counter(co); position:absolute; left:0; top:.6mm; width:5.6mm; height:5.6mm; border-radius:50%; background:var(--red); color:#fff; font-weight:700; font-size:9.5pt; line-height:5.6mm; text-align:center; }
+  .side ol.co { margin-bottom:0; }
+
+  /* ---------- ขั้นตอน ---------- */
+  ol.steps { list-style:none; counter-reset: st; padding-left:0; }
+  ol.steps > li { counter-increment: st; position:relative; padding-left:10mm; margin:2mm 0; }
+  ol.steps > li::before { content: counter(st); position:absolute; left:0; top:.2mm; width:6.6mm; height:6.6mm; border-radius:50%; background:var(--navy); color:#fff; font-weight:700; font-size:10pt; line-height:6.6mm; text-align:center; }
+
+  /* ---------- กล่องข้อความ ---------- */
+  .note { border-radius:2.2mm; padding:3mm 4.5mm; margin:3mm 0 4mm; break-inside:avoid; border-left:1.6mm solid; }
+  .note .h { font-weight:700; display:block; margin-bottom:.8mm; }
+  .note p:last-child, .note ul:last-child { margin-bottom:0; }
+  .warn { background:#fff4ec; border-color:var(--orange); }
+  .warn .h { color:#b84a0e; }
+  .tip { background:#ecf8f1; border-color:#2f9e63; }
+  .tip .h { color:#1d7a49; }
+  .info { background:#eef4fd; border-color:#3b74c9; }
+  .info .h { color:#24539c; }
+  .danger { background:#fdeef0; border-color:var(--red); }
+  .danger .h { color:#b0102f; }
+
+  /* ---------- ตาราง ---------- */
+  table { width:100%; border-collapse:collapse; margin:2mm 0 5mm; font-size:10.4pt; break-inside:auto; }
+  thead { display:table-header-group; }
+  tr { break-inside:avoid; }
+  th { background:var(--navy); color:#fff; font-weight:600; padding:2.2mm 2.6mm; text-align:left; }
+  td { padding:2mm 2.6mm; border-bottom:1px solid var(--line); vertical-align:top; }
+  tbody tr:nth-child(even) td { background:#f8f9fb; }
+  td.c, th.c { text-align:center; }
+  .pill { display:inline-block; border-radius:99px; padding:0 2.6mm; font-size:9.6pt; font-weight:600; background:#fde4d3; color:#9a3a07; white-space:nowrap; }
+  .pill.g { background:#d9f2e4; color:#14663c; }
+  .pill.b { background:#dbe8fb; color:#1f4c94; }
+  .pill.r { background:#fbdde2; color:#9f1430; }
+  .pill.y { background:#fdf0c7; color:#7a5a00; }
+  .pill.n { background:#e8eaee; color:#3f4652; }
+  .key { display:inline-block; border:1px solid #c9ced8; border-bottom-width:2px; border-radius:1.5mm; padding:0 1.8mm; font-size:10pt; background:#fff; white-space:nowrap; }
+  .btn { display:inline-block; background:var(--orange); color:#fff; border-radius:1.6mm; padding:0 2.2mm; font-size:10pt; font-weight:600; white-space:nowrap; }
+  .btn.w { background:#fff; color:var(--ink); border:1px solid #c9ced8; }
+  .btn.g { background:#0b9466; }
+  .btn.r { background:#dc2626; }
+  code { font-family:"DejaVu Sans Mono", monospace; font-size:9.6pt; background:#eef0f3; border-radius:1.2mm; padding:0 1.4mm; }
+
+  /* ---------- แผนภาพขั้นตอน ---------- */
+  .flow { display:flex; align-items:stretch; gap:0; margin:3mm 0 5mm; break-inside:avoid; }
+  .flow .st { flex:1; text-align:center; background:#fff; border:1.5px solid #cfd5df; border-radius:2.5mm; padding:2.5mm 1.5mm; font-size:10pt; line-height:1.35; }
+  .flow .st b { display:block; font-size:10.6pt; color:var(--navy); }
+  .flow .st .who { color:var(--muted); font-size:9.2pt; }
+  .flow .st.on { border-color:var(--orange); background:#fff6ef; }
+  .flow .ar { flex:none; width:6mm; display:flex; align-items:center; justify-content:center; color:var(--orange); font-weight:700; }
+  .flow .num { display:inline-block; width:6mm; height:6mm; line-height:6mm; border-radius:50%; background:var(--orange); color:#fff; font-weight:700; font-size:9.5pt; margin-bottom:1mm; }
+
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:5mm; }
+  .card { border:1px solid var(--line); border-radius:2.5mm; padding:3mm 4mm; break-inside:avoid; background:#fff; }
+  .card h4 { margin-top:0; color:var(--navy); }
+  .check li { list-style:none; position:relative; padding-left:7mm; }
+  .check li::before { content:"☐"; position:absolute; left:0; top:-.4mm; font-size:13pt; color:var(--navy2); }
+  .small { font-size:10pt; color:var(--muted); }
+  .faq h4 { color:var(--navy); margin-top:4mm; }
+</style>
+</head>
+<body>
+
+<!-- ===================================================== ปก -->
+<section class="cover front-only">
+  <svg class="net" viewBox="0 0 300 220" fill="none" stroke="#c9ced8" stroke-width="1.4">
+    <path d="M30 40 L120 60 L200 30 L270 70 M120 60 L150 140 L240 170 M150 140 L60 170 M200 30 L240 170 M270 70 L240 170"/>
+    <g fill="#d9dde4" stroke="none"><circle cx="30" cy="40" r="6"/><circle cx="270" cy="70" r="6"/><circle cx="60" cy="170" r="5"/><circle cx="240" cy="170" r="6"/></g>
+    <g stroke="#cdd2da" fill="#fff" stroke-width="2"><circle cx="120" cy="60" r="22"/><circle cx="200" cy="30" r="20"/><circle cx="150" cy="140" r="22"/></g>
+    <path d="M113 52h14M113 60h14M113 68h9" stroke="#F26F21" stroke-width="2.5"/>
+    <path d="M200 20 l9 16 h-18 z" stroke="#F26F21" stroke-width="2.5" fill="none"/>
+    <path d="M141 140 l6 6 l12 -12" stroke="#9aa3b2" stroke-width="3"/>
+  </svg>
+  <div class="tag">คู่มือการใช้งาน</div>
+  <div class="title">
+    <h1>ระบบการตรวจความปลอดภัย</h1>
+    <div class="uni">มหาวิทยาลัยนเรศวร</div>
+    <div class="rule"></div>
+    <div class="en">NU Safety Inspection</div>
+  </div>
+  <img class="seal" src="../../public/nu-logo.png" alt="">
+  <div class="devices">
+    <div class="laptop"><img src="img/cover-dashboard.png" alt=""></div>
+    <div class="base"></div>
+    <div class="phone"><img src="img/cover-mobile.png" alt=""></div>
+  </div>
+  <div class="band1"></div>
+  <div class="band2"></div>
+  <div class="foot">ฉบับสำหรับผู้ใช้งานทุกบทบาท · <b>ฉบับที่ 1.0</b> · ตุลาคม 2569</div>
+</section>
+
+<!-- ===================================================== คำนำ -->
+<section class="front front-only" style="break-after:page">
+  <h1>คำนำ</h1>
+  <p>มหาวิทยาลัยนเรศวรให้ความสำคัญกับความปลอดภัยของบุคลากร นิสิต และผู้มาใช้บริการ จึงได้พัฒนา <b>ระบบการตรวจความปลอดภัย มหาวิทยาลัยนเรศวร (NU Safety Inspection)</b> เพื่อเป็นเครื่องมือกลางในการวางแผนและบันทึกผลการตรวจอุปกรณ์และพื้นที่ด้านความปลอดภัย เช่น ถังดับเพลิง ไฟฉุกเฉิน ทางหนีไฟ ระบบแจ้งเหตุเพลิงไหม้ และระบบไฟฟ้า ตั้งแต่การตรวจด้วยโทรศัพท์มือถือผ่าน QR Code การแจ้งข้อบกพร่อง การมอบหมายผู้รับผิดชอบแก้ไข การตรวจยืนยันผลก่อนปิดงาน ไปจนถึงการรายงานภาพรวมต่อผู้บริหาร</p>
+  <p>คู่มือฉบับนี้จัดทำขึ้นสำหรับ <b>ผู้ใช้งานที่ไม่มีพื้นฐานด้านคอมพิวเตอร์</b> โดยอธิบายทีละขั้นตอนพร้อมภาพหน้าจอจริงของระบบ จุดสำคัญในภาพมีกรอบสีแดงพร้อมหมายเลข และมีคำอธิบายของแต่ละหมายเลขอยู่ใต้ภาพ เนื้อหาแบ่งตามบทบาท ได้แก่ ผู้ตรวจ ผู้ดูแลคณะ/หน่วยงาน ผู้รับผิดชอบแก้ไข ผู้ตรวจยืนยัน ผู้บริหาร และผู้ดูแลระบบ ผู้ใช้งานสามารถอ่านเฉพาะส่วนของตนเองควบคู่กับส่วนที่ 1 ซึ่งอธิบายการเข้าสู่ระบบและหน้าจอหลัก</p>
+  <p>ตัวอย่างในคู่มือใช้สถานการณ์สมมติ <b>“ถังดับเพลิงแรงดันต่ำ”</b> ต่อเนื่องกันทุกส่วน ตั้งแต่ผู้ตรวจพบปัญหา ผู้ดูแลมอบหมายงาน ช่างแก้ไข ผู้ตรวจยืนยันส่งกลับให้แก้เพิ่ม จนปิดงานได้ เพื่อให้เห็นว่าแต่ละบทบาทเชื่อมต่อกันอย่างไร สำหรับผู้ดูแลระบบที่เพิ่งเริ่มต้น ขอให้อ่าน <b>ส่วนที่ 7</b> ซึ่งมีรายการตรวจสอบสำหรับการตั้งค่าครั้งแรก และวิธีแก้ปัญหาที่พบบ่อย</p>
+  <p>หวังเป็นอย่างยิ่งว่าคู่มือนี้จะช่วยให้การตรวจความปลอดภัยของมหาวิทยาลัยเป็นไปอย่างสะดวก ถูกต้อง ตรวจสอบย้อนหลังได้ และร่วมกันสร้างมหาวิทยาลัยที่ปลอดภัยสำหรับทุกคน</p>
+  <div class="sign"><span>คณะผู้จัดทำ<br>ตุลาคม 2569</span></div>
+  <div class="note info" style="margin-top:14mm"><span class="h">หมายเหตุเกี่ยวกับภาพในคู่มือ</span>
+    ชื่อบุคคล อีเมล หน่วยงาน อาคาร และข้อมูลทั้งหมดในภาพเป็น <b>ข้อมูลสมมติ</b> (มีคำว่า “ตัวอย่าง”) เพื่อประกอบคู่มือเท่านั้น หน้าจอจริงของท่านจะแสดงข้อมูลของหน่วยงานท่าน และเมนูที่เห็นอาจน้อยกว่าในภาพ ขึ้นกับบทบาทที่ได้รับ</div>
+</section>
+
+<!-- ===================================================== สารบัญ -->
+<section class="front front-only" style="break-after:page">
+  <h1>สารบัญ</h1>
+  <div class="toc" id="toc"></div>
+</section>
+
+<!-- ===================================================== ส่วนที่ 1 -->
+<div class="content">
+<div class="part" id="p1" data-toc="รู้จักระบบและการเข้าสู่ระบบ"><div class="k">ส่วนที่ 1</div><h1>รู้จักระบบและการเข้าสู่ระบบ</h1><p class="lead">อ่านส่วนนี้ก่อนทุกบทบาท — ระบบทำอะไรได้ ใครทำอะไร และวิธีใช้งานหน้าจอพื้นฐาน</p></div>
+
+<h2 id="s1-1">1.1 ระบบนี้ใช้ทำอะไร</h2>
+<p>ระบบการตรวจความปลอดภัยเป็น <b>เว็บไซต์</b> ที่เปิดได้ทั้งบนคอมพิวเตอร์และโทรศัพท์มือถือ ไม่ต้องติดตั้งโปรแกรมเพิ่ม ใช้แทนแบบฟอร์มกระดาษในการตรวจอุปกรณ์ความปลอดภัย โดยมีงานหลัก 5 อย่าง ดังนี้</p>
+<table>
+  <thead><tr><th style="width:28%">งาน</th><th>ความหมาย</th></tr></thead>
+  <tbody>
+    <tr><td><b>ทะเบียนจุดตรวจ</b></td><td>รายการอุปกรณ์/พื้นที่ที่ต้องตรวจ เช่น ถังดับเพลิงแต่ละถัง แต่ละจุดมีรหัสและ <b>ป้าย QR Code</b> ติดไว้ที่ตัวอุปกรณ์</td></tr>
+    <tr><td><b>แผนและงานตรวจ</b></td><td>กำหนดว่าต้องตรวจอะไร บ่อยแค่ไหน (เช่น รายเดือน) ระบบจะสร้าง “งานตรวจ” ให้อัตโนมัติทุกรอบ</td></tr>
+    <tr><td><b>การตรวจ</b></td><td>ผู้ตรวจสแกน QR ด้วยมือถือ แล้วกด ผ่าน / ไม่ผ่าน / ไม่เกี่ยวข้อง ทีละข้อ พร้อมถ่ายภาพหลักฐาน</td></tr>
+    <tr><td><b>ติดตามแก้ไข</b></td><td>ข้อที่ “ไม่ผ่าน” กลายเป็น <b>ข้อบกพร่อง</b> ที่ต้องมอบหมายผู้แก้ไข และต้องมีผู้ตรวจยืนยันก่อนปิดงาน</td></tr>
+    <tr><td><b>แดชบอร์ดและรายงาน</b></td><td>สรุปภาพรวม เช่น ร้อยละการตรวจครบ งานค้าง งานเกินกำหนด และดาวน์โหลดรายงาน Excel/PDF</td></tr>
+  </tbody>
+</table>
+
+<h2 id="s1-2">1.2 คำศัพท์ที่ควรรู้</h2>
+<table>
+  <thead><tr><th style="width:26%">คำ</th><th>ความหมายแบบเข้าใจง่าย</th></tr></thead>
+  <tbody>
+    <tr><td>เบราว์เซอร์</td><td>โปรแกรมเปิดเว็บไซต์ เช่น Google Chrome, Microsoft Edge, Safari (บน iPhone)</td></tr>
+    <tr><td>ลิงก์ / URL</td><td>ที่อยู่ของเว็บไซต์ เช่น <code>https://ชื่อระบบ.vercel.app</code> ผู้ดูแลระบบจะแจ้งลิงก์ของระบบให้ทราบ</td></tr>
+    <tr><td>เมนู</td><td>รายการคำสั่งด้านซ้ายของจอคอมพิวเตอร์ หรือแถบด้านล่างของจอมือถือ</td></tr>
+    <tr><td>จุดตรวจ / อุปกรณ์</td><td>สิ่งที่ต้องตรวจ 1 ชิ้นหรือ 1 พื้นที่ มีรหัสประจำ เช่น <code>FE-EN1-101</code> (FE = ถังดับเพลิง, EN1 = อาคาร, 101 = ชั้น 1 จุดที่ 1)</td></tr>
+    <tr><td>แบบตรวจ (Checklist)</td><td>รายการหัวข้อที่ต้องตรวจของอุปกรณ์แต่ละประเภท เช่น “เกจวัดแรงดันอยู่ในช่วงใช้งาน”</td></tr>
+    <tr><td>งานตรวจ</td><td>การตรวจ 1 ครั้งของจุดตรวจ 1 จุด ในรอบหนึ่ง เช่น “ถัง FE-EN1-101 รอบเดือนตุลาคม”</td></tr>
+    <tr><td>ข้อบกพร่อง</td><td>สิ่งที่ตรวจแล้ว “ไม่ผ่าน” ระบบออกเลขที่ให้ เช่น <code>NC-2569-00083</code> เพื่อติดตามจนแก้เสร็จ</td></tr>
+    <tr><td>บทบาท / สิทธิ์</td><td>หน้าที่ของผู้ใช้ในระบบ ซึ่งกำหนดว่าเห็นเมนูอะไรและทำอะไรได้ (ดูหัวข้อ 1.3)</td></tr>
+    <tr><td>ฉบับร่าง</td><td>ผลตรวจที่กรอกไว้แต่ยังไม่ได้กด “ส่งผลตรวจ” ยังแก้ไขได้</td></tr>
+  </tbody>
+</table>
+
+<h2 id="s1-3">1.3 บทบาทและสิทธิ์การใช้งาน</h2>
+<p>ผู้ใช้ทุกคนเข้าสู่ระบบด้วยบัญชีอีเมลของมหาวิทยาลัย (<b>@nu.ac.th</b>) ผู้ดูแลระบบเป็นผู้กำหนดว่าแต่ละคนมีบทบาทใด <b>ที่หน่วยงานใด</b> สิทธิ์ที่ให้กับหน่วยงานหนึ่งจะครอบคลุมหน่วยงานย่อยทั้งหมดด้วย เช่น ผู้ดูแลคณะวิศวกรรมศาสตร์เห็นข้อมูลทุกภาควิชาในคณะ แต่ไม่เห็นข้อมูลคณะอื่น หนึ่งคนมีได้หลายบทบาท</p>
+<table>
+  <thead><tr><th style="width:27%">บทบาท</th><th style="width:20%">ขอบเขตข้อมูล</th><th>หน้าที่หลักในระบบ</th><th class="c" style="width:12%">อ่านส่วนที่</th></tr></thead>
+  <tbody>
+    <tr><td><span class="pill">ผู้ตรวจ</span></td><td>หน่วยงานที่ได้รับมอบหมาย</td><td>สแกน QR ตรวจตามแบบตรวจ ถ่ายภาพหลักฐาน และส่งผลตรวจ</td><td class="c">1, 2</td></tr>
+    <tr><td><span class="pill">ผู้ดูแลระดับคณะ/หน่วยงาน</span></td><td>หน่วยงานตน + หน่วยงานย่อย</td><td>ดูแลทะเบียนจุดตรวจ พิมพ์ QR วางแผนตรวจ มอบหมายงานตรวจ มอบหมายผู้แก้ไข ออกใบงาน ตรวจยืนยัน และเพิ่มผู้ใช้ในหน่วยงาน</td><td class="c">1, 3, 5, 6</td></tr>
+    <tr><td><span class="pill">ผู้รับผิดชอบแก้ไข</span></td><td>งานที่ได้รับมอบหมาย</td><td>รับงานแก้ไข รายงานความคืบหน้า แนบภาพหลังแก้ไข และส่งผลให้ตรวจยืนยัน</td><td class="c">1, 4</td></tr>
+    <tr><td><span class="pill">ผู้ตรวจยืนยัน</span></td><td>หน่วยงานที่ได้รับมอบหมาย</td><td>เปรียบเทียบภาพก่อน–หลัง แล้ว “ผ่าน — ปิดงาน” หรือ “ส่งกลับแก้ไข”</td><td class="c">1, 5</td></tr>
+    <tr><td><span class="pill">ผู้ประสานงานความปลอดภัยส่วนกลาง</span></td><td>ทั้งมหาวิทยาลัย</td><td>วางแผนตรวจกลาง ดูแลแบบตรวจ ติดตามและมอบหมายงานทุกหน่วยงาน ตรวจยืนยัน</td><td class="c">1, 3, 5, 6</td></tr>
+    <tr><td><span class="pill">ผู้บริหาร/คณะกรรมการความปลอดภัย</span></td><td>ตามหน่วยงานที่ได้รับ</td><td>ดูแดชบอร์ดและรายงาน (อ่านอย่างเดียว แก้ไขข้อมูลไม่ได้)</td><td class="c">1, 6</td></tr>
+    <tr><td><span class="pill">ผู้ดูแลระบบมหาวิทยาลัย</span></td><td>ทั้งระบบ</td><td>จัดการหน่วยงาน อาคาร ผู้ใช้และสิทธิ์ทุกบทบาท การแจ้งเตือน ภาพลักษณ์ และดูประวัติการใช้งาน</td><td class="c">ทุกส่วน โดยเฉพาะ 7</td></tr>
+  </tbody>
+</table>
+<div class="note info"><span class="h">ทำไมบางคนไม่เห็นบางเมนู</span>ระบบซ่อนเมนูที่ผู้ใช้ไม่มีสิทธิ์ และตรวจสิทธิ์ซ้ำที่ฐานข้อมูลทุกครั้ง แม้จะพิมพ์ลิงก์เข้าไปตรงๆ ก็จะเห็นเพียงข้อความ “ไม่มีสิทธิ์เข้าถึง”</div>
+
+<h2 id="s1-4">1.4 ภาพรวมขั้นตอนการทำงาน</h2>
+<p>การตรวจ 1 รอบ เริ่มจากผู้ดูแลเตรียมข้อมูล แล้วผู้ตรวจออกตรวจ ถ้าทุกข้อผ่านก็จบ ถ้ามีข้อไม่ผ่านจะเข้าสู่ขั้นตอน <b>ติดตามแก้ไข 5 สถานะ</b> ดังภาพ</p>
+<div class="flow">
+  <div class="st"><span class="num">1</span><b>พบข้อบกพร่อง</b><span class="who">ระบบสร้างอัตโนมัติเมื่อผู้ตรวจส่งผล</span></div><div class="ar">➜</div>
+  <div class="st"><span class="num">2</span><b>มอบหมาย</b><span class="who">ผู้ดูแลเลือกผู้แก้ไขและกำหนดเสร็จ</span></div><div class="ar">➜</div>
+  <div class="st"><span class="num">3</span><b>กำลังแก้ไข</b><span class="who">ผู้รับผิดชอบรับงานและรายงานความคืบหน้า</span></div><div class="ar">➜</div>
+  <div class="st"><span class="num">4</span><b>รอตรวจยืนยัน</b><span class="who">ผู้รับผิดชอบแนบภาพหลังแก้ไขแล้วส่ง</span></div><div class="ar">➜</div>
+  <div class="st on"><span class="num">5</span><b>ปิดงาน</b><span class="who">ผู้ตรวจยืนยันกด “ผ่าน — ปิดงาน”</span></div>
+</div>
+<table>
+  <thead><tr><th style="width:8%" class="c">ขั้น</th><th style="width:27%">สถานะในระบบ</th><th style="width:27%">ผู้ดำเนินการ</th><th>ปุ่มที่ใช้</th></tr></thead>
+  <tbody>
+    <tr><td class="c">0</td><td>งานตรวจถึงรอบ</td><td>ผู้ตรวจ</td><td><span class="btn">เริ่มตรวจตามงานที่ถึงรอบ</span> → <span class="btn">ส่งผลตรวจ</span></td></tr>
+    <tr><td class="c">1</td><td><span class="pill">พบข้อบกพร่อง (รอมอบหมาย)</span></td><td>ผู้ดูแลคณะ/หน่วยงาน หรือผู้ประสานงานส่วนกลาง</td><td><span class="btn">บันทึกการมอบหมาย</span> (และ <span class="btn w">ออกใบงาน</span> ถ้าต้องให้หน่วยงานอื่นช่วย)</td></tr>
+    <tr><td class="c">2</td><td><span class="pill y">มอบหมายแล้ว (รอแก้ไข)</span></td><td>ผู้รับผิดชอบแก้ไข</td><td><span class="btn">รับงาน / เริ่มแก้ไข</span></td></tr>
+    <tr><td class="c">3</td><td><span class="pill b">กำลังแก้ไข</span></td><td>ผู้รับผิดชอบแก้ไข</td><td><span class="btn w">บันทึกความคืบหน้า</span> → <span class="btn g">ส่งผลแก้ไขให้ตรวจยืนยัน</span></td></tr>
+    <tr><td class="c">4</td><td><span class="pill b">รอตรวจยืนยัน</span></td><td>ผู้ตรวจยืนยัน (ต้องไม่ใช่คนเดียวกับผู้แก้ไข)</td><td><span class="btn g">ผ่าน — ปิดงาน</span> หรือ <span class="btn r">ส่งกลับแก้ไข</span></td></tr>
+    <tr><td class="c">5</td><td><span class="pill g">ปิดงาน</span></td><td>—</td><td>ดูประวัติและพิมพ์ PDF ได้</td></tr>
+  </tbody>
+</table>
+<div class="note warn"><span class="h">กฎสำคัญที่ระบบบังคับ</span>
+  <ul>
+    <li>งานจะ <b>ปิดได้ด้วยการตรวจยืนยันเท่านั้น</b> ไม่มีปุ่มหรือช่องทางอื่นที่ปิดงานได้</li>
+    <li>ผู้ที่แก้ไขงาน <b>ยืนยันงานของตนเองไม่ได้</b></li>
+    <li>เมื่อถูก “ส่งกลับแก้ไข” ต้องแนบ <b>ภาพหลังแก้ไขชุดใหม่</b> ทุกครั้ง ระบบนับจำนวนครั้งที่ส่งกลับไว้</li>
+    <li>ผลตรวจที่ส่งแล้วแก้ไขไม่ได้ และทุกการเปลี่ยนแปลงถูกบันทึกประวัติไว้ตรวจสอบย้อนหลัง</li>
+  </ul></div>
+
+<h2 id="s1-5">1.5 การเข้าสู่ระบบ</h2>
+<ol class="steps">
+  <li>เปิดเบราว์เซอร์ (Google Chrome, Microsoft Edge หรือ Safari) แล้วพิมพ์ลิงก์ของระบบที่ผู้ดูแลแจ้ง หรือสแกน QR Code ที่ติดอยู่กับอุปกรณ์</li>
+  <li>กดปุ่มสีส้ม <span class="btn">เข้าสู่ระบบด้วยบัญชี Google ของมหาวิทยาลัย (@nu.ac.th)</span></li>
+  <li>เลือกบัญชี <b>@nu.ac.th</b> ของท่าน (ถ้ายังไม่เคยเข้าสู่ระบบ Google ในเครื่องนี้ ให้กรอกอีเมลและรหัสผ่าน NU Mail)</li>
+  <li>ระบบพากลับมาที่หน้าแรกของระบบโดยอัตโนมัติ</li>
+</ol>
+<figure><img class="desk" style="width:62%" src="img/01-login.png"><figcaption>หน้าเข้าสู่ระบบ</figcaption></figure>
+<ol class="co">
+  <li><b>ปุ่มเข้าสู่ระบบด้วยบัญชี Google ของมหาวิทยาลัย</b> — วิธีหลักสำหรับบุคลากรทุกคน ใช้รหัสผ่านเดียวกับ NU Mail ระบบไม่เก็บรหัสผ่านของท่าน</li>
+  <li><b>เข้าสู่ระบบด้วยอีเมลและรหัสผ่าน</b> — ใช้เฉพาะบัญชีพิเศษที่ผู้ดูแลระบบสร้างรหัสผ่านให้เท่านั้น <b>ห้ามกรอกรหัสผ่าน NU Mail ในช่องนี้</b></li>
+</ol>
+<div class="note danger"><span class="h">ใช้บัญชี Google ส่วนตัวไม่ได้</span>
+  ถ้าเลือกบัญชี @gmail.com หรืออีเมลที่ไม่ใช่ของมหาวิทยาลัย ระบบจะปฏิเสธและแสดงข้อความ “ระบบนี้สำหรับบุคลากรเท่านั้น” ให้กดปุ่มเข้าสู่ระบบอีกครั้ง แล้วเลือกบัญชี @nu.ac.th</div>
+
+<h3 id="s1-5-1">เข้าสู่ระบบครั้งแรก — “ยังไม่ได้รับบทบาท”</h3>
+<p>การเข้าสู่ระบบครั้งแรกจะสร้างบัญชีให้อัตโนมัติ แต่บัญชีใหม่ <b>ยังไม่มีบทบาท</b> จึงยังไม่เห็นข้อมูลใด ระบบแจ้งผู้ดูแลส่วนกลางให้ทราบแล้ว ให้แจ้งผู้ดูแลระบบหรือผู้ดูแลหน่วยงานของท่านว่า “ต้องการบทบาทอะไร ที่หน่วยงานใด” เมื่อผู้ดูแลกำหนดให้แล้ว ให้กดรีเฟรชหน้า (หรือออกจากระบบแล้วเข้าใหม่)</p>
+<figure><img class="desk s" src="img/02-no-role.png"><figcaption>หน้าจอของผู้ใช้ใหม่ที่ยังไม่ได้รับบทบาท</figcaption></figure>
+<ol class="co"><li>ข้อความแจ้งว่าบัญชียังไม่ได้รับบทบาท — ไม่ใช่ข้อผิดพลาด รอผู้ดูแลกำหนดสิทธิ์ (ผู้ดูแลทำตามหัวข้อ 7.4)</li></ol>
+
+<h2 id="s1-6">1.6 หน้าจอหลักบนคอมพิวเตอร์</h2>
+<figure><img class="desk" src="img/03-layout.png"><figcaption>หน้าจอหลัก (แดชบอร์ด) บนคอมพิวเตอร์</figcaption></figure>
+<ol class="co">
+  <li><b>เมนูหลัก</b> — แดชบอร์ด · แผนและงานตรวจ · เริ่มตรวจ/สแกน QR · ทะเบียนจุดตรวจ · ติดตามแก้ไข · รายงาน · ตั้งค่าระบบ (เมนูที่เห็นขึ้นกับบทบาท) เมนูที่เปิดอยู่จะเป็นสีส้ม</li>
+  <li><b>กระดิ่งแจ้งเตือน</b> — ตัวเลขสีแดงคือจำนวนการแจ้งเตือนที่ยังไม่อ่าน กดเพื่อดูรายการ เช่น “ได้รับมอบหมายงานแก้ไข”</li>
+  <li><b>ชื่อผู้ใช้และบัญชีของฉัน</b> — แสดงชื่อและบทบาทของท่าน กดเพื่อดูข้อมูลบัญชี</li>
+  <li><b>ออกจากระบบ</b> — กดทุกครั้งเมื่อใช้เครื่องคอมพิวเตอร์ส่วนกลาง</li>
+</ol>
+
+<h2 id="s1-7">1.7 หน้าจอบนโทรศัพท์มือถือ และการติดตั้งเป็นแอป</h2>
+<div class="side">
+  <figure><img class="mob" src="img/03-mobile-home.png"><figcaption>หน้าจอบนมือถือ</figcaption></figure>
+  <div class="txt">
+    <ol class="co">
+      <li><b>ปุ่มเมนู (☰)</b> — เปิดเมนูทั้งหมด รวมถึงบัญชีของฉันและออกจากระบบ</li>
+      <li><b>กระดิ่งแจ้งเตือน</b></li>
+      <li><b>ปุ่มเริ่มตรวจ (ปุ่มกลมสีส้มตรงกลาง)</b> — ทางลัดไปหน้าสแกน QR ใช้บ่อยที่สุดสำหรับผู้ตรวจ</li>
+    </ol>
+    <p>แถบด้านล่างคือ <b>เมนูลัด</b> กดสลับหน้าได้ด้วยนิ้วโป้งเดียว</p>
+    <h4>ติดตั้งเป็นแอปบนหน้าจอโทรศัพท์ (แนะนำ)</h4>
+    <p><b>Android (Chrome):</b> เปิดระบบ → กดเมนู <span class="key">⋮</span> มุมขวาบน → <b>เพิ่มลงในหน้าจอหลัก</b> หรือ <b>ติดตั้งแอป</b> → <b>ติดตั้ง</b></p>
+    <p><b>iPhone/iPad (ต้องใช้ Safari):</b> กดปุ่มแชร์ <span class="key">⬆</span> ด้านล่าง → เลื่อนลง → <b>เพิ่มไปยังหน้าจอโฮม</b> → <b>เพิ่ม</b></p>
+    <p>จะมีไอคอนตรามหาวิทยาลัยบนหน้าจอ แตะแล้วเปิดเต็มจอเหมือนแอปทั่วไป ไม่ต้องดาวน์โหลดจาก App Store/Play Store</p>
+  </div>
+</div>
+
+<h2 id="s1-8">1.8 การแจ้งเตือน</h2>
+<p>ระบบแจ้งเตือนเมื่อมีงานที่เกี่ยวข้องกับท่าน เช่น ได้รับมอบหมายงานตรวจ งานใกล้ครบกำหนด งานเกินกำหนด มีผลแก้ไขรอตรวจยืนยัน หรือถูกส่งกลับแก้ไข การแจ้งเตือนแสดงในระบบ (กระดิ่ง) เสมอ และส่งทางอีเมลด้วยเมื่อผู้ดูแลตั้งค่าระบบส่งอีเมลแล้ว ระบบตรวจงานใกล้ครบกำหนด/เกินกำหนดวันละครั้ง เวลาประมาณ 08.00 น. และป้องกันการแจ้งซ้ำ (1 เหตุการณ์ แจ้ง 1 ครั้งต่อคน)</p>
+<figure><img class="desk s" src="img/03-notifications.png"><figcaption>หน้ารายการแจ้งเตือน — กดที่รายการเพื่อเปิดงานนั้นโดยตรง</figcaption></figure>
+
+<!-- ===================================================== ส่วนที่ 2 -->
+<div class="part" id="p2" data-toc="การใช้งานสำหรับผู้ตรวจ"><div class="k">ส่วนที่ 2</div><h1>การใช้งานสำหรับผู้ตรวจ</h1><p class="lead">ตรวจด้วยโทรศัพท์มือถือ: สแกน QR → กดผลทีละข้อ → ถ่ายภาพ → ส่งผลตรวจ</p></div>
+<p>ผู้ตรวจใช้งานบนโทรศัพท์มือถือเป็นหลัก ก่อนออกตรวจควรตรวจสอบว่า (1) โทรศัพท์มีอินเทอร์เน็ต (2) เข้าสู่ระบบไว้แล้ว และ (3) อนุญาตให้เบราว์เซอร์ใช้กล้อง ตัวอย่างในส่วนนี้คือการตรวจถังดับเพลิง <code>FE-EN1-202</code> ซึ่งพบว่า <b>เข็มเกจวัดแรงดันอยู่ในแถบสีแดง</b></p>
+
+<h2 id="s2-1">2.1 เลือกจุดที่จะตรวจ</h2>
+<p>กดปุ่ม <b>เริ่มตรวจ</b> (ปุ่มกลมสีส้มด้านล่าง) จะพบหน้า “เริ่มตรวจ / สแกน QR” ซึ่งเลือกจุดตรวจได้ 3 วิธี</p>
+<div class="side">
+  <figure><img class="mob" src="img/10-inspect-home.png"><figcaption>หน้าเริ่มตรวจ</figcaption></figure>
+  <div class="txt">
+    <ol class="co">
+      <li><b>เปิดกล้องสแกน QR</b> — กดแล้วหันกล้องไปที่ป้าย QR ของอุปกรณ์ ระบบเปิดหน้าจุดตรวจให้เอง ครั้งแรกเบราว์เซอร์จะถามสิทธิ์ใช้กล้อง ให้กด <b>อนุญาต</b></li>
+      <li><b>พิมพ์รหัสจุดตรวจ</b> — ใช้เมื่อกล้องเปิดไม่ได้หรือป้าย QR ชำรุด ให้พิมพ์รหัสที่อยู่ใต้ QR เช่น <code>FE-EN1-101</code> แล้วกดปุ่มแว่นขยาย</li>
+      <li><b>งานที่ต้องตรวจของฉัน</b> — รายการงานที่ได้รับมอบหมาย เรียงตามวันครบกำหนด แตะรายการเพื่อเริ่มตรวจได้ทันที</li>
+    </ol>
+    <div class="note tip"><span class="h">เคล็ดลับ</span>ถ้าสแกนแล้วขึ้น “ไม่มีสิทธิ์ตรวจจุดตรวจนี้” แปลว่าจุดตรวจอยู่นอกหน่วยงานที่ท่านได้รับมอบหมาย ให้แจ้งผู้ดูแลหน่วยงาน</div>
+  </div>
+</div>
+<div class="side">
+  <figure><img class="mob" src="img/10-inspect-tasklist.png"><figcaption>รายการงานที่ต้องตรวจ</figcaption></figure>
+  <div class="txt">
+    <ol class="co">
+      <li><b>งานตรวจ 1 รายการ</b> — แสดงรหัสและชื่อจุดตรวจ หมวด อาคาร และตำแหน่ง</li>
+      <li><b>สถานะและวันครบกำหนด</b> — <span class="pill r">เกินกำหนด</span> คือเลยวันครบกำหนดแล้ว ควรตรวจก่อน · <span class="pill b">รอตรวจ</span> คืออยู่ในช่วงที่ต้องตรวจ</li>
+    </ol>
+  </div>
+</div>
+
+<h2 id="s2-2">2.2 หน้าจุดตรวจ (หลังสแกน QR)</h2>
+<div class="side">
+  <figure><img class="mob" src="img/10-qr-asset.png"><figcaption>หน้าจุดตรวจ</figcaption></figure>
+  <div class="txt">
+    <ol class="co">
+      <li><b>ชื่อและรหัสจุดตรวจ</b> — ตรวจสอบว่าตรงกับอุปกรณ์ที่อยู่ตรงหน้า (ดูรหัสบนป้าย)</li>
+      <li><b>เริ่มตรวจตามงานที่ถึงรอบ</b> — กดเพื่อเปิดแบบฟอร์มตรวจ ถ้าไม่มีงานถึงรอบ ปุ่มจะเป็น “เริ่มตรวจ (นอกรอบ)” ใช้กรณีตรวจเพิ่มเติม เช่น หลังเกิดเหตุ</li>
+    </ol>
+    <p>ด้านล่างแสดง <b>งานตรวจที่ถึงรอบ</b> และ <b>ข้อบกพร่องที่ยังเปิดอยู่</b> ของจุดนี้ ช่วยให้รู้ว่าเคยพบปัญหาอะไรค้างอยู่</p>
+    <div class="note info"><span class="h">ถ้าเคยเริ่มตรวจไว้แล้ว</span>ระบบจะเปิดฉบับร่างเดิมให้ทำต่อ ไม่สร้างการตรวจซ้ำ</div>
+  </div>
+</div>
+
+<h2 id="s2-3">2.3 บันทึกผลรายข้อ</h2>
+<p>แบบฟอร์มตรวจแสดงหัวข้อทีละข้อ แต่ละข้อบอก <b>เกณฑ์</b> (สิ่งที่ถือว่าผ่าน) <b>วิธีตรวจ</b> และ <b>ความสำคัญ</b> ให้กดปุ่มใหญ่ 1 ใน 3 ปุ่มของทุกข้อ</p>
+<div class="side">
+  <figure><img class="mob" src="img/11-form-top.png"><figcaption>แบบฟอร์มตรวจ</figcaption></figure>
+  <div class="txt">
+    <ol class="co">
+      <li><b>ชื่อจุดตรวจ</b> พร้อมรหัส ตำแหน่ง วันครบกำหนด และแบบตรวจที่ใช้</li>
+      <li><span class="btn w">✓ ผ่าน</span> — เป็นไปตามเกณฑ์</li>
+      <li><span class="btn r">✕ ไม่ผ่าน</span> — ไม่เป็นไปตามเกณฑ์ ระบบจะให้กรอกรายละเอียดเพิ่ม (หัวข้อ 2.4)</li>
+      <li><span class="btn w">— ไม่เกี่ยวข้อง</span> — หัวข้อนี้ใช้กับอุปกรณ์ชิ้นนี้ไม่ได้ ต้องระบุเหตุผล (หัวข้อ 2.5) บางข้อไม่มีปุ่มนี้เพราะต้องตอบผ่าน/ไม่ผ่านเท่านั้น</li>
+    </ol>
+    <div class="note warn"><span class="h">ป้าย “ร่างสำหรับผู้เชี่ยวชาญตรวจรับรอง”</span>หมายความว่าเกณฑ์ในแบบตรวจนี้ยังไม่ได้อ้างอิงกฎหมาย/มาตรฐานอย่างเป็นทางการ ใช้ตรวจได้ตามปกติ แต่ห้ามอ้างว่าผลตรวจเป็นไปตามกฎหมาย</div>
+  </div>
+</div>
+
+<h2 id="s2-4">2.4 เมื่อพบข้อบกพร่อง (กด “ไม่ผ่าน”)</h2>
+<div class="side">
+  <figure><img class="mob" src="img/11-form-fail.png"><figcaption>กรอกข้อมูลข้อที่ไม่ผ่าน</figcaption></figure>
+  <div class="txt">
+    <ol class="co">
+      <li>กด <b>ไม่ผ่าน</b> ปุ่มจะเป็นสีแดง และมีช่องให้กรอกเพิ่มเติม</li>
+      <li><b>รายละเอียดข้อบกพร่อง</b> (บังคับ) — เขียนให้คนที่ไม่ได้อยู่หน้างานเข้าใจ: <i>พบอะไร ที่ไหน เสี่ยงอย่างไร</i> เช่น “เข็มเกจวัดแรงดันตกอยู่ในแถบสีแดง ถังอาจใช้งานไม่ได้เมื่อเกิดเหตุ”</li>
+      <li><b>ระดับความเร่งด่วน</b> (บังคับ) — ต่ำ / ปานกลาง / สูง (เร่งด่วน) / วิกฤต (เร่งด่วนมาก) ระดับ <b>สูงและวิกฤต</b> ระบบแจ้งผู้ดูแลทันทีหลังส่งผล (ดูภาคผนวก ข)</li>
+      <li><b>ภาพหลักฐาน</b> — กด “ถ่าย/แนบภาพ” กล้องหลังจะเปิดให้ถ่าย หรือเลือกภาพจากเครื่อง ระบบย่อขนาดภาพให้อัตโนมัติ แนบได้หลายภาพ กดรูปถังขยะบนภาพเพื่อลบ</li>
+    </ol>
+    <div class="note warn"><span class="h">ถ่ายภาพไม่ได้?</span>ถ้าถ่ายไม่ได้เพราะ <b>ไม่ปลอดภัย</b> หรือ <b>เป็นพื้นที่ห้ามถ่ายภาพ</b> ให้กรอกช่อง “ถ่ายภาพไม่ได้? ระบุเหตุผล” แทน ระบบยอมรับเหตุผลแทนภาพได้</div>
+  </div>
+</div>
+
+<h2 id="s2-5">2.5 ข้อที่ไม่เกี่ยวข้อง</h2>
+<div class="side">
+  <figure><img class="mob" src="img/11-form-na.png"><figcaption>ระบุเหตุผลข้อที่ไม่เกี่ยวข้อง</figcaption></figure>
+  <div class="txt">
+    <ol class="co">
+      <li>กด <b>ไม่เกี่ยวข้อง</b></li>
+      <li><b>เหตุผลที่ไม่เกี่ยวข้อง</b> (บังคับ) — เช่น “ถังชนิด CO2 ไม่มีเกจวัดแรงดัน”</li>
+    </ol>
+    <p>ข้อ “ไม่เกี่ยวข้อง” <b>ไม่ถูกนำไปคิดคะแนน</b> ตัวอย่าง: ตรวจ 6 ข้อ ผ่าน 4 ไม่ผ่าน 1 ไม่เกี่ยวข้อง 1 → คะแนน = 4 ÷ (4+1) × 100 = <b>80%</b></p>
+    <p>ถ้าต้องการบันทึกข้อสังเกตในข้อที่ผ่าน ให้กด <b>เพิ่มหมายเหตุ</b> ใต้ข้อนั้น</p>
+  </div>
+</div>
+
+<h2 id="s2-6">2.6 บันทึกร่าง และการใช้งานเมื่อสัญญาณไม่ดี</h2>
+<div class="side">
+  <figure><img class="mob" src="img/11-form-bottom.png"><figcaption>แถบสถานะด้านล่างของแบบฟอร์ม</figcaption></figure>
+  <div class="txt">
+    <ol class="co">
+      <li><b>ความคืบหน้า</b> — ตอบแล้วกี่ข้อจากทั้งหมด จำนวนผ่าน/ไม่ผ่าน/ไม่เกี่ยวข้อง และคะแนน</li>
+      <li><b>สถานะฉบับร่าง</b> — “ร่างบันทึก (เวลา)” แปลว่าบันทึกเข้าระบบแล้ว · “มีการแก้ไขที่ยังไม่บันทึกเข้าระบบ” แปลว่ามีข้อมูลที่ยังอยู่ในเครื่องเท่านั้น</li>
+      <li><b>ปุ่มบันทึกร่าง (รูปแผ่นดิสก์)</b> — กดเพื่อบันทึกทันที (ระบบบันทึกร่างอัตโนมัติทุก 20 วินาทีเมื่อออนไลน์อยู่แล้ว)</li>
+      <li><b>ส่งผลตรวจ</b> — กดเมื่อตอบครบทุกข้อ</li>
+    </ol>
+    <div class="note info"><span class="h">ไม่มีสัญญาณ / แบตหมด</span>
+      <ul><li>ทุกครั้งที่กรอก ระบบเก็บสำเนาไว้ <b>ในเครื่อง</b> ด้วย ถ้าปิดหน้าไปแล้วเปิดใหม่ในเครื่องเดิม ข้อมูลจะกลับมา</li>
+      <li>ถ้าเห็นแถบแดง “ไม่มีการเชื่อมต่อเครือข่าย” ข้อมูลยัง <b>ไม่ถูกส่ง</b> ให้ไปที่จุดที่มีสัญญาณแล้วกดส่ง</li>
+      <li>ระบบ <b>ยังไม่รองรับการส่งผลแบบออฟไลน์</b> และต้องอัปโหลดภาพขณะออนไลน์</li></ul></div>
+  </div>
+</div>
+
+<h2 id="s2-7">2.7 ส่งผลตรวจ และการยืนยันจากระบบ</h2>
+<div class="pair">
+  <figure><img class="mob" src="img/11-form-incomplete.png"><figcaption>ส่งทั้งที่ยังกรอกไม่ครบ</figcaption></figure>
+  <figure><img class="mob" src="img/12-submitted.png"><figcaption>ส่งผลตรวจสำเร็จ</figcaption></figure>
+</div>
+<ol class="steps">
+  <li>กด <span class="btn">ส่งผลตรวจ</span> ถ้ายังกรอกไม่ครบ ระบบแสดงกล่องแดง “ยังกรอกข้อมูลไม่ครบ … ข้อ” (ภาพซ้าย หมายเลข 1) และเลื่อนไปยังข้อที่ต้องแก้ พร้อมบอกสาเหตุใต้ข้อนั้น</li>
+  <li>เมื่อครบแล้ว ระหว่างส่งจะเห็นข้อความ “กำลังส่งผลตรวจ… กรุณารอการยืนยันจากระบบ” <b>อย่าปิดหน้าจอ</b></li>
+  <li><b>การส่งสำเร็จจริงเมื่อเห็นข้อความสีเขียว</b> “ระบบบันทึกผลตรวจเรียบร้อยแล้ว” (ภาพขวา หมายเลข 1) พร้อมจำนวนข้อบกพร่องที่สร้าง</li>
+  <li>ข้อที่ไม่ผ่านจะได้ <b>เลขที่ข้อบกพร่อง</b> เช่น <code>NC-2569-00083</code> (ภาพขวา หมายเลข 2) กดเพื่อติดตามสถานะได้</li>
+</ol>
+<div class="note tip"><span class="h">กดส่งซ้ำได้อย่างปลอดภัย</span>ถ้าสัญญาณหลุดระหว่างส่ง และไม่แน่ใจว่าส่งสำเร็จหรือไม่ ให้กด “ส่งผลตรวจ” อีกครั้งได้เลย ระบบจะไม่บันทึกซ้ำ ผลตรวจที่ส่งแล้วแก้ไขไม่ได้ ถ้ากรอกผิด ให้แจ้งผู้ดูแลหน่วยงาน</div>
+
+<!-- ===================================================== ส่วนที่ 3 -->
+<div class="part" id="p3" data-toc="การใช้งานสำหรับผู้ดูแลคณะ/หน่วยงาน และผู้ประสานงานส่วนกลาง"><div class="k">ส่วนที่ 3</div><h1>การใช้งานสำหรับผู้ดูแลคณะ/หน่วยงาน<br>และผู้ประสานงานส่วนกลาง</h1><p class="lead">ทะเบียนจุดตรวจ · ป้าย QR · แผนการตรวจ · มอบหมายงาน · มอบหมายผู้แก้ไข · ใบงาน</p></div>
+<p>ผู้ดูแลคณะ/หน่วยงานทำงานในขอบเขตหน่วยงานของตนและหน่วยงานย่อย ส่วนผู้ประสานงานส่วนกลางทำได้ทุกหน่วยงาน ลำดับงานที่แนะนำเมื่อเริ่มใช้ระบบ คือ <b>เพิ่มจุดตรวจ → พิมพ์และติดป้าย QR → สร้างแผนการตรวจ → มอบหมายผู้ตรวจ</b> จากนั้นจึงติดตามข้อบกพร่องเป็นประจำ</p>
+
+<h2 id="s3-1">3.1 ทะเบียนจุดตรวจ</h2>
+<p>เมนู <b>ทะเบียนจุดตรวจ</b> แสดงอุปกรณ์ทั้งหมดในขอบเขตสิทธิ์ของท่าน พร้อมวันตรวจล่าสุด กำหนดตรวจครั้งถัดไป วันหมดอายุ และสถานะ</p>
+<figure><img class="desk" src="img/30-assets.png"><figcaption>หน้าทะเบียนจุดตรวจและอุปกรณ์</figcaption></figure>
+<ol class="co">
+  <li><b>เพิ่มจุดตรวจ</b> — ลงทะเบียนอุปกรณ์ใหม่ (หัวข้อ 3.2)</li>
+  <li><b>ตัวกรอง</b> — เลือกหน่วยงาน อาคาร หมวดการตรวจ แล้วกด “กรองข้อมูล” (กด “ล้าง” เพื่อดูทั้งหมด)</li>
+  <li><b>ค้นหา</b> — พิมพ์รหัส ชื่อ หรือหมายเลขเครื่อง</li>
+  <li><b>ใกล้หมดอายุ/หมดอายุ (60 วัน)</b> — แสดงเฉพาะอุปกรณ์ที่ใกล้หมดอายุ เช่น ถังดับเพลิงที่ต้องเปลี่ยน ควรเปิดดูทุกเดือน</li>
+  <li><b>ช่องเลือก</b> — ติ๊กเลือกหลายรายการ</li>
+  <li><b>พิมพ์ QR ที่เลือก</b> — พิมพ์ป้าย QR ของรายการที่ติ๊กไว้ทั้งหมดในครั้งเดียว</li>
+</ol>
+
+<h2 id="s3-2">3.2 เพิ่มจุดตรวจใหม่</h2>
+<figure><img class="desk" src="img/31-asset-new.png"><figcaption>แบบฟอร์มเพิ่มจุดตรวจ/อุปกรณ์</figcaption></figure>
+<ol class="co">
+  <li><b>รหัสจุดตรวจ</b> (บังคับ) — รหัสที่คนอ่านเข้าใจและไม่ซ้ำกัน แนะนำรูปแบบ <code>ประเภท-อาคาร-ชั้นและลำดับ</code> เช่น <code>FE-EN1-303</code> = ถังดับเพลิง อาคาร EN1 ชั้น 3 จุดที่ 3</li>
+  <li><b>ประเภทอุปกรณ์</b> (บังคับ) — ใช้เลือกแบบตรวจที่เหมาะสม</li>
+  <li><b>หน่วยงานเจ้าของ</b> (บังคับ) — หน่วยงานที่รับผิดชอบอุปกรณ์</li>
+  <li><b>อาคาร</b> (บังคับ) แล้วเลือก <b>ชั้น</b> — รายการชั้นจะเปลี่ยนตามอาคาร</li>
+  <li><b>ห้อง/พื้นที่</b> และ <b>รายละเอียดตำแหน่ง</b> — ช่วยให้ผู้ตรวจหาอุปกรณ์เจอ เช่น “ข้างลิฟต์โดยสาร ฝั่งทิศเหนือ”</li>
+  <li><b>วันที่หมดอายุ</b> — สำหรับถังดับเพลิงหรืออุปกรณ์ที่มีอายุใช้งาน ระบบจะเตือนก่อนหมดอายุ</li>
+  <li><b>รอบตรวจ</b> (บังคับ) — รายวัน/สัปดาห์/เดือน/ไตรมาส/ปี หรือกำหนดเอง (ทุก N วัน)</li>
+  <li><b>สถานะ</b> — ใช้งานอยู่ / หยุดใช้งาน / ย้ายตำแหน่ง / จำหน่ายแล้ว (ตรวจได้เฉพาะ “ใช้งานอยู่”)</li>
+</ol>
+<p>กรอกเสร็จกด <span class="btn">บันทึกจุดตรวจ</span> ระบบสร้าง QR Code ให้อัตโนมัติ</p>
+<div class="note warn"><span class="h">ไม่มีการลบจุดตรวจ</span>เมื่ออุปกรณ์ถูกเลิกใช้ ให้แก้สถานะเป็น “จำหน่ายแล้ว” หรือ “หยุดใช้งาน” แทนการลบ เพื่อเก็บประวัติการตรวจไว้ตรวจสอบย้อนหลัง</div>
+
+<h2 id="s3-3">3.3 รายละเอียดจุดตรวจและการพิมพ์ป้าย QR</h2>
+<figure><img class="desk" src="img/32-asset-detail.png"><figcaption>หน้ารายละเอียดจุดตรวจ</figcaption></figure>
+<ol class="co">
+  <li><b>QR Code</b> ของจุดตรวจ พร้อมรหัสที่อ่านด้วยตา</li>
+  <li><b>พิมพ์ QR</b> — เปิดหน้าพิมพ์ป้ายของจุดนี้</li>
+  <li><b>แก้ไข</b> — แก้ข้อมูลจุดตรวจ เช่น ย้ายตำแหน่ง เปลี่ยนสถานะ</li>
+  <li><b>เริ่มตรวจ</b> — ตรวจจากหน้านี้ได้ทันที (ถ้ามีบทบาทผู้ตรวจ)</li>
+  <li><b>เพิ่มรูป</b> — แนบภาพอุปกรณ์เพื่อให้ผู้ตรวจจำได้ง่าย</li>
+</ol>
+<p>ด้านล่างของหน้ามี <b>งานตรวจที่ยังเปิดอยู่</b> <b>ประวัติการตรวจ</b> และ <b>ข้อบกพร่อง</b> ของจุดนี้ ปุ่ม “ประวัติ (PDF)” ใช้พิมพ์ประวัติอุปกรณ์</p>
+<figure><img class="desk" src="img/33-qr-print.png"><figcaption>หน้าพิมพ์ป้าย QR Code (เลือกได้หลายป้าย)</figcaption></figure>
+<h4>วิธีพิมพ์ป้าย QR</h4>
+<ol class="steps">
+  <li>กด <span class="btn">พิมพ์ / บันทึกเป็น PDF</span> หน้าต่างพิมพ์ของเบราว์เซอร์จะเปิดขึ้น</li>
+  <li>เลือกขนาดกระดาษ <b>A4</b> และ <b>ปิด</b> ตัวเลือก “หัวกระดาษและท้ายกระดาษ (Headers and footers)”</li>
+  <li>เลือกเครื่องพิมพ์ หรือ “บันทึกเป็น PDF” เพื่อส่งให้ร้านพิมพ์สติกเกอร์</li>
+  <li>กดลิงก์ “ป้ายใหญ่ (2 คอลัมน์)” ถ้าต้องการป้ายขนาดใหญ่ขึ้น</li>
+</ol>
+<div class="note tip"><span class="h">คำแนะนำการติดป้าย</span>
+  <ul><li>ติดในตำแหน่งที่สแกนได้สะดวก ไม่บังข้อมูลบนอุปกรณ์ และไม่โดนแดด/ฝนโดยตรง (แนะนำสติกเกอร์กันน้ำหรือเคลือบพลาสติก)</li>
+  <li>ป้ายมีเพียงรหัสอ้างอิงแบบสุ่ม ไม่มีข้อมูลส่วนบุคคล คนทั่วไปที่สแกนต้องเข้าสู่ระบบและมีสิทธิ์จึงจะเห็นรายละเอียด</li>
+  <li>ป้ายชำรุดหรือหาย พิมพ์ใหม่ได้จากหน้ารายละเอียดจุดตรวจ ใช้รหัสเดิมได้เลย</li></ul></div>
+
+<h2 id="s3-4">3.4 สร้างแผนการตรวจ</h2>
+<p>แผนการตรวจบอกระบบว่า “อุปกรณ์กลุ่มไหน ต้องตรวจด้วยแบบตรวจอะไร บ่อยแค่ไหน” เมื่อบันทึกแผน ระบบจะสร้างงานตรวจถึงสิ้นปีให้อุปกรณ์ทุกชิ้นที่ตรงเงื่อนไขทันที ไปที่เมนู <b>แผนและงานตรวจ</b> → ปุ่ม <b>จัดการแผนการตรวจ</b></p>
+<figure><img class="desk" src="img/34-plans.png"><figcaption>หน้าแผนการตรวจ</figcaption></figure>
+<ol class="co">
+  <li><b>สร้างแผนการตรวจใหม่</b> — แบบฟอร์มด้านขวา</li>
+  <li><b>ชื่อแผน</b> — ตั้งให้สื่อความหมาย เช่น “ตรวจถังดับเพลิงรายเดือน อาคาร EN1”</li>
+  <li><b>หน่วยงาน</b> (ครอบคลุมหน่วยงานย่อยด้วย) แล้วเลือก <b>อาคาร</b> และ <b>ประเภทอุปกรณ์</b> ถ้าไม่เลือก = ทุกอาคาร/ทุกประเภท</li>
+  <li><b>แบบตรวจ</b> — แบบตรวจที่ใช้กับอุปกรณ์ในแผนนี้</li>
+  <li><b>รอบการตรวจ</b> — แล้วกำหนด <b>วันเริ่ม</b> (วันสิ้นสุดเว้นว่างได้) “ต้องตรวจภายใน (วัน)” และ “ผู้ตรวจตั้งต้น” (ถ้ามี) จากนั้นกด <span class="btn">บันทึกแผนและสร้างงานตรวจ</span></li>
+  <li><b>สร้างงานถึงสิ้นปี</b> — กดเมื่อเพิ่มอุปกรณ์ใหม่ภายหลัง ระบบจะสร้างงานให้อุปกรณ์ใหม่โดยไม่สร้างงานซ้ำ · “ปิดใช้แผน” เมื่อเลิกใช้แผนนั้น</li>
+</ol>
+
+<h2 id="s3-5">3.5 มอบหมายงานตรวจให้ผู้ตรวจ</h2>
+<figure><img class="desk" src="img/35-tasks.png"><figcaption>หน้าแผนและงานตรวจ</figcaption></figure>
+<ol class="co">
+  <li><b>จัดการแผนการตรวจ</b> — ไปหน้าแผน (หัวข้อ 3.4) · ปุ่ม “เฉพาะงานของฉัน” แสดงเฉพาะงานที่ท่านเป็นผู้ตรวจ</li>
+  <li><b>ติ๊กเลือกงาน</b> ที่ต้องการมอบหมาย (เลือกได้หลายงาน) ใช้แถบ ทั้งหมด/รอตรวจ/เกินกำหนด/ยังไม่ถึงกำหนด/ตรวจแล้ว เพื่อกรองรายการ</li>
+  <li><b>มอบหมายงานที่เลือกให้</b> — เลือกชื่อผู้ตรวจ</li>
+  <li>กด <b>มอบหมาย</b> — ผู้ตรวจจะได้รับแจ้งเตือนเมื่องานถึงรอบภายใน 7 วัน</li>
+</ol>
+
+<h2 id="s3-6">3.6 มอบหมายผู้รับผิดชอบแก้ไขข้อบกพร่อง</h2>
+<p>เมื่อผู้ตรวจส่งผลที่มีข้อไม่ผ่าน ผู้ดูแลหน่วยงานจะได้รับแจ้งเตือน “พบข้อบกพร่องใหม่ รอมอบหมาย” เปิดเมนู <b>ติดตามแก้ไข</b> → แถบ <b>รอมอบหมาย</b> แล้วกดรายการ</p>
+<figure><img class="desk" src="img/20-finding-open.png"><figcaption>หน้ารายละเอียดข้อบกพร่อง</figcaption></figure>
+<ol class="co">
+  <li><b>เลขที่และชื่อข้อบกพร่อง</b> พร้อมสถานะและระดับความเร่งด่วน</li>
+  <li><b>แถบลำดับสถานะ 5 ขั้น</b> — วงกลมสีส้มคือขั้นปัจจุบัน</li>
+  <li><b>รายละเอียด</b> — สิ่งที่พบ จุดตรวจ ตำแหน่ง ลิงก์ไปผลตรวจต้นทาง และ “เคยพบครั้งก่อน” ถ้าเป็นปัญหาเกิดซ้ำ</li>
+  <li><b>หลักฐานก่อน–หลังแก้ไข</b> — ภาพจากผู้ตรวจ กดที่ภาพเพื่อดูขนาดใหญ่</li>
+</ol>
+<figure><img class="desk" src="img/20-assign-form.png"><figcaption>แบบฟอร์มมอบหมายผู้รับผิดชอบแก้ไข (ด้านขวาของหน้า)</figcaption></figure>
+<ol class="co">
+  <li><b>ผู้รับผิดชอบแก้ไข</b> — เลือกช่างหรือผู้รับผิดชอบ (มอบหมายข้ามหน่วยงานได้ เช่น ช่างกองอาคารสถานที่)</li>
+  <li><b>กำหนดแล้วเสร็จ</b> — วันที่ต้องแก้ไขเสร็จ ระบบเตือนก่อนครบกำหนดและเมื่อเกินกำหนด</li>
+  <li><b>มาตรการเบื้องต้น</b> — สิ่งที่ทำไปก่อนเพื่อลดความเสี่ยง เช่น “งดใช้ถังนี้ชั่วคราว นำถังสำรองมาวางแทน”</li>
+  <li>กด <b>บันทึกการมอบหมาย</b> — สถานะเปลี่ยนเป็น “มอบหมายแล้ว (รอแก้ไข)” และผู้รับผิดชอบได้รับแจ้งเตือน</li>
+</ol>
+<p>ถ้าต้องเปลี่ยนผู้รับผิดชอบหรือเลื่อนกำหนด ให้ใช้กล่อง “เปลี่ยนผู้รับผิดชอบ / กำหนดเสร็จ” ในหน้าเดียวกัน</p>
+
+<h2 id="s3-7">3.7 ออกใบงานถึงหน่วยงานอื่น</h2>
+<p>ถ้างานแก้ไขต้องให้หน่วยงานอื่นดำเนินการ เช่น กองอาคารสถานที่ ให้ออก <b>ใบงาน</b> จากกล่อง “ส่งใบงานไปยังหน่วยงานที่เกี่ยวข้อง” ในหน้าข้อบกพร่อง</p>
+<figure><img class="desk" src="img/21-workorder-form.png"><figcaption>แบบฟอร์มออกใบงาน</figcaption></figure>
+<ol class="co">
+  <li><b>หน่วยงานปลายทาง</b> — ค่าเริ่มต้นคือกองอาคารสถานที่ แก้ได้</li>
+  <li><b>รายละเอียดงาน</b> — ระบบเติมข้อมูลข้อบกพร่องให้ แก้ไขเพิ่มเติมได้ เช่น “ขอเติมสารดับเพลิงหรือเปลี่ยนถังขนาด 15 ปอนด์ 1 ถัง”</li>
+  <li>กด <b>ออกใบงาน</b> — ระบบออกเลขที่ใบงาน เช่น <code>WO-2569-00001</code></li>
+</ol>
+<figure><img class="desk s" src="img/21-workorder.png"><figcaption>ใบแจ้งงานแก้ไขที่พร้อมพิมพ์/บันทึก PDF</figcaption></figure>
+<div class="note warn"><span class="h">ยังไม่เชื่อมต่อระบบแจ้งซ่อมภายนอก</span>ระบบนี้ <b>ยังไม่ได้ส่งใบงานเข้าระบบแจ้งซ่อมของกองอาคารสถานที่โดยอัตโนมัติ</b> ให้กด “พิมพ์ / บันทึกเป็น PDF” แล้วส่งเอกสารด้วยตนเอง (อีเมล/หนังสือ) ใบงานจะแสดงสถานะ “ยังไม่เชื่อมต่อ”</div>
+
+<h2 id="s3-8">3.8 ติดตามข้อบกพร่องประจำสัปดาห์</h2>
+<p>เมนู <b>ติดตามแก้ไข</b> มีแถบกรองสำเร็จรูป แนะนำให้เปิดดูอย่างน้อยสัปดาห์ละครั้ง</p>
+<table>
+  <thead><tr><th style="width:24%">แถบ</th><th>ใช้ดู</th></tr></thead>
+  <tbody>
+    <tr><td><span class="pill n">ยังไม่ปิด</span></td><td>ข้อบกพร่องทุกรายการที่ยังไม่ปิดงาน</td></tr>
+    <tr><td><span class="pill n">รอมอบหมาย</span></td><td>รายการใหม่ที่ต้องเลือกผู้รับผิดชอบ — <b>ควรเป็นศูนย์เสมอ</b></td></tr>
+    <tr><td><span class="pill n">รอแก้ไข / กำลังแก้ไข</span></td><td>งานที่อยู่ระหว่างผู้รับผิดชอบดำเนินการ</td></tr>
+    <tr><td><span class="pill n">รอตรวจยืนยัน</span></td><td>งานที่แก้เสร็จแล้ว รอผู้ตรวจยืนยัน</td></tr>
+    <tr><td><span class="pill r">เกินกำหนด</span></td><td>งานแก้ไขที่เลยวันกำหนดแล้วเสร็จ — ติดตามผู้รับผิดชอบ</td></tr>
+    <tr><td><span class="pill r">เร่งด่วน</span></td><td>ระดับสูงและวิกฤตที่ยังไม่ปิด — ควรตรวจหน้างานและมีมาตรการเบื้องต้น</td></tr>
+    <tr><td><span class="pill y">เกิดซ้ำ</span></td><td>ปัญหาเดิมที่จุดเดิม เกิดซ้ำภายใน 365 วัน — ควรหาสาเหตุที่แท้จริง</td></tr>
+    <tr><td><span class="pill g">ปิดงานแล้ว</span> / <span class="pill n">งานของฉัน</span> / <span class="pill n">ทั้งหมด</span></td><td>ดูย้อนหลัง หรือเฉพาะงานที่ท่านเป็นผู้รับผิดชอบ</td></tr>
+  </tbody>
+</table>
+
+<!-- ===================================================== ส่วนที่ 4 -->
+<div class="part" id="p4" data-toc="การใช้งานสำหรับผู้รับผิดชอบแก้ไข"><div class="k">ส่วนที่ 4</div><h1>การใช้งานสำหรับผู้รับผิดชอบแก้ไข</h1><p class="lead">รับงาน → รายงานความคืบหน้า → แนบภาพหลังแก้ไข → ส่งให้ตรวจยืนยัน</p></div>
+<p>ผู้รับผิดชอบแก้ไข เช่น ช่างของคณะหรือกองอาคารสถานที่ จะได้รับแจ้งเตือน “ได้รับมอบหมายงานแก้ไข” (และอีเมล หากระบบตั้งค่าส่งอีเมลแล้ว) ใช้งานได้ทั้งบนมือถือและคอมพิวเตอร์ ตัวอย่างนี้ใช้มือถือ</p>
+
+<h2 id="s4-1">4.1 ดูงานที่ได้รับมอบหมาย และรับงาน</h2>
+<div class="pair">
+  <figure><img class="mob" src="img/22-fixer-list.png"><figcaption>แถบ “งานของฉัน”</figcaption></figure>
+  <figure><img class="mob" src="img/22-fixer-start.png"><figcaption>ปุ่มรับงาน</figcaption></figure>
+</div>
+<ol class="steps">
+  <li>เมนู <b>ติดตามแก้ไข</b> → แถบ <b>งานของฉัน</b> (ภาพซ้าย หมายเลข 1) หรือกดจากรายการแจ้งเตือน</li>
+  <li>เปิดรายการ อ่านรายละเอียด ตำแหน่ง ภาพก่อนแก้ไข มาตรการเบื้องต้น และ <b>กำหนดแล้วเสร็จ</b></li>
+  <li>กด <span class="btn">รับงาน / เริ่มแก้ไข</span> (ภาพขวา หมายเลข 1) สถานะเปลี่ยนเป็น “กำลังแก้ไข”</li>
+</ol>
+
+<h2 id="s4-2">4.2 รายงานความคืบหน้า</h2>
+<div class="side">
+  <figure><img class="mob" src="img/23-fixer-progress.png"><figcaption>รายงานความคืบหน้า</figcaption></figure>
+  <div class="txt">
+    <ol class="co">
+      <li><b>รายงานความคืบหน้า</b> — สิ่งที่ดำเนินการแล้ว หรืออุปสรรค เช่น “ส่งถังไปเติมสาร คาดว่าได้คืนภายใน 3 วัน”</li>
+      <li><b>ร้อยละความคืบหน้า</b> — ตัวเลข 0–100</li>
+      <li>กด <b>บันทึกความคืบหน้า</b> — บันทึกได้หลายครั้ง ผู้ดูแลเห็นในประวัติ</li>
+    </ol>
+    <div class="note tip"><span class="h">ทำไมควรรายงานความคืบหน้า</span>ช่วยให้ผู้ดูแลรู้ว่างานไม่ได้ถูกลืม โดยเฉพาะงานที่ต้องรออะไหล่หรือรองบประมาณ ถ้ารู้ว่าเสร็จไม่ทันกำหนด ให้แจ้งผู้ดูแลเพื่อเลื่อนกำหนด</div>
+  </div>
+</div>
+
+<h2 id="s4-3">4.3 ส่งผลการแก้ไขให้ตรวจยืนยัน</h2>
+<div class="side">
+  <figure><img class="mob" src="img/24-fixer-submit.png"><figcaption>แนบภาพและส่งผลแก้ไข</figcaption></figure>
+  <div class="txt">
+    <ol class="co">
+      <li><b>ภาพหลักฐานหลังแก้ไข</b> — กด “แนบภาพหลังแก้ไข” แล้วถ่ายภาพ ควรถ่าย <b>มุมเดียวกับภาพก่อนแก้ไข</b> เพื่อให้เปรียบเทียบง่าย</li>
+      <li><b>สรุปการแก้ไข</b> (บังคับ) — ทำอะไรไป ผลเป็นอย่างไร</li>
+      <li>กด <span class="btn g">ส่งผลแก้ไขให้ตรวจยืนยัน</span> สถานะเปลี่ยนเป็น “รอตรวจยืนยัน”</li>
+    </ol>
+    <p>ถ้าถ่ายภาพไม่ได้เพราะไม่ปลอดภัยหรือห้ามถ่ายภาพ ให้กรอกช่อง <b>เหตุผลที่ไม่แนบภาพ</b> แทน ถ้าไม่มีทั้งภาพและเหตุผล ระบบจะไม่ให้ส่ง</p>
+  </div>
+</div>
+<div class="side">
+  <figure><img class="mob" src="img/24-fixer-waiting.png"><figcaption>หลังส่งผลแก้ไข</figcaption></figure>
+  <div class="txt">
+    <ol class="co">
+      <li>ข้อความ “ผู้แก้ไขไม่สามารถยืนยันงานของตนเองได้” — ระบบบังคับแยกหน้าที่ ผู้ตรวจยืนยันคนอื่นจะเป็นผู้ตรวจรับงาน</li>
+    </ol>
+    <h4>ถ้าถูกส่งกลับแก้ไข</h4>
+    <ul>
+      <li>ท่านจะได้รับแจ้งเตือนพร้อม <b>เหตุผล</b> สถานะกลับเป็น “กำลังแก้ไข” และหน้ารายการแสดง “ส่งกลับแก้ไข 1 ครั้ง”</li>
+      <li>แก้ไขตามเหตุผล แล้ว <b>แนบภาพหลังแก้ไขชุดใหม่</b> (ภาพก่อนถูกส่งกลับไม่นับ) และส่งผลอีกครั้ง</li>
+    </ul>
+    <h4>กำหนดเวลา</h4>
+    <p>ระบบเตือนก่อนครบกำหนด (ค่าเริ่มต้น 3 วัน) และเมื่อเกินกำหนด ถ้าเกินกำหนดนาน (ค่าเริ่มต้น 7 วัน) จะยกระดับแจ้งถึงผู้ดูแลหน่วยงานและผู้ประสานงานส่วนกลาง</p>
+  </div>
+</div>
+
+<!-- ===================================================== ส่วนที่ 5 -->
+<div class="part" id="p5" data-toc="การใช้งานสำหรับผู้ตรวจยืนยัน"><div class="k">ส่วนที่ 5</div><h1>การใช้งานสำหรับผู้ตรวจยืนยัน</h1><p class="lead">ตรวจรับผลการแก้ไข แล้วเลือก “ผ่าน — ปิดงาน” หรือ “ส่งกลับแก้ไข”</p></div>
+<p>ผู้ตรวจยืนยันคือคนกลางที่ยืนยันว่าแก้ไขจริงก่อนปิดงาน (ผู้ดูแลคณะ/หน่วยงานและผู้ประสานงานส่วนกลางทำหน้าที่นี้ได้ด้วย) ระบบแจ้งเตือน “มีผลการแก้ไขรอตรวจยืนยัน” เมื่อผู้รับผิดชอบส่งผล</p>
+
+<h2 id="s5-1">5.1 เปิดรายการที่รอตรวจยืนยัน</h2>
+<figure><img class="desk" src="img/25-verify-list.png"><figcaption>แถบ “รอตรวจยืนยัน”</figcaption></figure>
+<ol class="co">
+  <li>เมนู <b>ติดตามแก้ไข</b> → แถบ <b>รอตรวจยืนยัน</b></li>
+  <li>กดเลขที่ข้อบกพร่องเพื่อเปิดรายละเอียด</li>
+</ol>
+
+<h2 id="s5-2">5.2 เปรียบเทียบหลักฐานก่อน–หลัง</h2>
+<figure><img class="desk" src="img/25-verify-compare.png"><figcaption>หลักฐานก่อน–หลังแก้ไข และประวัติการดำเนินการ</figcaption></figure>
+<ol class="co">
+  <li><b>ก่อนแก้ไข (จากการตรวจ)</b> — ภาพที่ผู้ตรวจถ่ายตอนพบปัญหา</li>
+  <li><b>หลังแก้ไข</b> — ภาพจากผู้รับผิดชอบ กดที่ภาพเพื่อดูขนาดใหญ่</li>
+</ol>
+<p>อ่าน <b>ประวัติการดำเนินการ</b> ด้านล่างประกอบ ถ้าเป็นข้อบกพร่องระดับเร่งด่วน ควรไปตรวจหน้างานจริงก่อนยืนยัน</p>
+
+<h2 id="s5-3">5.3 ผ่าน — ปิดงาน หรือ ส่งกลับแก้ไข</h2>
+<figure><img class="desk" src="img/26-verify-form.png"><figcaption>กล่อง “ตรวจยืนยันผลการแก้ไข” (ด้านขวาของหน้า)</figcaption></figure>
+<ol class="co">
+  <li><b>ความเห็น / เหตุผล</b> — <b>บังคับเมื่อส่งกลับ</b> เขียนให้ชัดว่าต้องแก้อะไรเพิ่ม เช่น “ป้ายตรวจสอบยังไม่ระบุวันที่ กรุณาเขียนวันที่ตรวจบนป้ายแล้วถ่ายภาพใหม่”</li>
+  <li><span class="btn r">ส่งกลับแก้ไข</span> — งานกลับไปเป็น “กำลังแก้ไข” ผู้รับผิดชอบได้รับแจ้งพร้อมเหตุผล</li>
+  <li><span class="btn g">ผ่าน — ปิดงาน</span> — ยืนยันว่าแก้ไขเรียบร้อย งานปิดทันที</li>
+</ol>
+<figure><img class="desk s" src="img/27-closed.png"><figcaption>งานที่ปิดแล้ว</figcaption></figure>
+<ol class="co"><li>ข้อความ “งานนี้ผ่านการตรวจยืนยันและปิดงานแล้ว” — แถบสถานะทั้ง 5 ขั้นเป็นเครื่องหมายถูก กดปุ่ม <b>พิมพ์ / PDF</b> ที่หัวหน้าเพื่อพิมพ์รายงานข้อบกพร่องฉบับนี้</li></ol>
+<figure><img class="desk s" src="img/27-history.png"><figcaption>ประวัติการดำเนินการ</figcaption></figure>
+<ol class="co"><li>ครั้งที่ <b>ส่งกลับแก้ไข</b> (จุดสีแดง) พร้อมเหตุผล — ประวัติบันทึกทุกขั้นตอน ใครทำ และเมื่อใด แก้ไขหรือลบไม่ได้</li></ol>
+
+<!-- ===================================================== ส่วนที่ 6 -->
+<div class="part" id="p6" data-toc="แดชบอร์ดและรายงาน (ผู้บริหารและผู้ดูแล)"><div class="k">ส่วนที่ 6</div><h1>แดชบอร์ดและรายงาน</h1><p class="lead">สำหรับผู้บริหาร คณะกรรมการความปลอดภัย ผู้ประสานงาน และผู้ดูแล</p></div>
+<p>แดชบอร์ดคือหน้าแรกหลังเข้าสู่ระบบ ตัวเลขทุกตัว <b>คำนวณเฉพาะข้อมูลในขอบเขตสิทธิ์ของผู้ดู</b> เช่น ผู้บริหารคณะเห็นเฉพาะข้อมูลคณะตน ส่วนบทบาทผู้บริหารเป็นแบบอ่านอย่างเดียว ไม่มีเมนูตั้งค่าหรือเริ่มตรวจ</p>
+
+<h2 id="s6-1">6.1 อ่านแดชบอร์ด</h2>
+<figure><img class="desk" src="img/40-dashboard.png"><figcaption>แดชบอร์ดความปลอดภัย</figcaption></figure>
+<ol class="co">
+  <li><b>ข้อมูล ณ</b> — เวลาที่คำนวณตัวเลข (เวลาประเทศไทย) กด “รีเฟรชข้อมูล” เพื่อคำนวณใหม่</li>
+  <li><b>ตัวกรอง</b> — ช่วงเวลา (เช่น ต้นปีถึงวันนี้ ปีงบประมาณ หรือกำหนดเอง) หน่วยงาน อาคาร หมวด ผู้รับผิดชอบ แล้วกด “กรองข้อมูล”</li>
+  <li><b>ความครอบคลุมการตรวจ</b> — ร้อยละของงานตรวจที่ตรวจแล้ว เทียบกับงานที่ถึงกำหนดในช่วงเวลา (สูตรอยู่ใต้ตัวเลขทุกกล่อง)</li>
+  <li><b>งานตรวจเกินกำหนด</b> — <b>กดที่กล่องตัวเลขใดก็ได้</b> เพื่อเปิดรายการต้นทางของตัวเลขนั้น</li>
+</ol>
+<table>
+  <thead><tr><th style="width:30%">ตัวชี้วัด</th><th>ความหมาย</th><th style="width:28%">ค่าที่ดี</th></tr></thead>
+  <tbody>
+    <tr><td>จุดตรวจ/อุปกรณ์ที่ใช้งานอยู่</td><td>จำนวนอุปกรณ์สถานะ “ใช้งานอยู่” ณ ปัจจุบัน</td><td>—</td></tr>
+    <tr><td>งานตรวจที่ถึงกำหนดในช่วงเวลา</td><td>จำนวนงานที่ครบกำหนดในช่วงเวลาที่เลือก (ตรวจแล้ว + ยังไม่ตรวจ)</td><td>—</td></tr>
+    <tr><td><b>ความครอบคลุมการตรวจ</b></td><td>ตรวจแล้ว ÷ งานที่ถึงกำหนด × 100</td><td>ใกล้ 100%</td></tr>
+    <tr><td>งานตรวจเกินกำหนด</td><td>งานที่เลยวันครบกำหนดแล้วแต่ยังไม่ส่งผล</td><td>0</td></tr>
+    <tr><td>ข้อบกพร่องที่ยังเปิดอยู่</td><td>ข้อบกพร่องทุกสถานะยกเว้นปิดงาน (ไม่ขึ้นกับช่วงเวลา) พร้อมจำนวนที่ยังไม่มอบหมายและเกิดซ้ำ</td><td>น้อยที่สุด</td></tr>
+    <tr><td>ข้อบกพร่องเร่งด่วนที่ยังเปิด</td><td>ระดับ “สูง” และ “วิกฤต” ที่ยังไม่ปิด</td><td>0</td></tr>
+    <tr><td>งานแก้ไขเกินกำหนด</td><td>งานที่มอบหมายแล้ว/กำลังแก้ไข และเลยกำหนดแล้วเสร็จ (ส่งตรวจยืนยันแล้วไม่นับ)</td><td>0</td></tr>
+    <tr><td><b>ปิดงานภายในกำหนด</b></td><td>งานที่ปิดภายในกำหนด ÷ งานที่ปิดในช่วงเวลา × 100</td><td>ใกล้ 100%</td></tr>
+  </tbody>
+</table>
+<p>ใต้กล่องตัวเลขมีกราฟ <b>สถานะการตรวจ</b> <b>ผลตรวจรายข้อ</b> (อัตราผ่านไม่นับข้อ “ไม่เกี่ยวข้อง”) <b>สถานะการแก้ไข</b> <b>แนวโน้ม 12 เดือน</b> <b>ข้อบกพร่องตามหมวด</b> และ <b>กิจกรรมล่าสุด</b></p>
+
+<h2 id="s6-2">6.2 ตารางการตรวจรายปี (ม.ค.–ธ.ค.)</h2>
+<figure><img class="desk" src="img/41-dashboard-annual.png"><figcaption>ตารางการตรวจรายปีท้ายแดชบอร์ด</figcaption></figure>
+<ol class="co"><li><b>ตารางการตรวจรายปี พ.ศ.</b> — แต่ละช่อง = <b>ตรวจแล้ว / ถึงกำหนด</b> ของเดือนนั้น แยกตามหมวด กดที่ช่องเพื่อดูรายการ หรือกด “ดูรายอุปกรณ์” เพื่อดูแยกทีละจุดตรวจ</li></ol>
+<table>
+  <thead><tr><th style="width:30%">สัญลักษณ์</th><th>ความหมาย</th></tr></thead>
+  <tbody>
+    <tr><td><span class="pill g">✓ 3/3</span></td><td>ตรวจครบตามกำหนดแล้ว</td></tr>
+    <tr><td><span class="pill r">! 7/9</span></td><td>มีงานเกินกำหนด (ตรวจไม่ครบ) — ควรติดตาม</td></tr>
+    <tr><td><span class="pill b">5/9</span></td><td>กำลังอยู่ในรอบ ยังไม่ครบกำหนด</td></tr>
+    <tr><td><span class="pill n">0/9</span></td><td>ยังไม่ถึงรอบ</td></tr>
+    <tr><td>–</td><td>ไม่มีงานตรวจในเดือนนั้น</td></tr>
+  </tbody>
+</table>
+
+<h2 id="s6-3">6.3 ดาวน์โหลดรายงาน Excel และ PDF</h2>
+<figure><img class="desk" src="img/42-reports.png"><figcaption>หน้ารายงาน</figcaption></figure>
+<ol class="co">
+  <li><b>ช่วงเวลา</b> และตัวกรองอื่น — เลือกก่อนแล้วกด “กรองข้อมูล” รายงานทุกฉบับใช้ตัวกรองนี้</li>
+  <li><b>Excel</b> — ดาวน์โหลดไฟล์ .xlsx ทันที เปิดด้วย Microsoft Excel หรือ Google Sheets</li>
+  <li><b>PDF / พิมพ์</b> — เปิดหน้าพิมพ์ แล้วกด “พิมพ์ / บันทึกเป็น PDF” → เลือก <b>บันทึกเป็น PDF</b></li>
+</ol>
+<table>
+  <thead><tr><th style="width:30%">รายงาน</th><th>เนื้อหา</th></tr></thead>
+  <tbody>
+    <tr><td>ผลตรวจรายครั้ง</td><td>ผลตรวจที่ส่งในช่วงเวลา จำนวนผ่าน/ไม่ผ่าน/ไม่เกี่ยวข้อง และคะแนน</td></tr>
+    <tr><td>สรุปรายเดือน</td><td>งานถึงกำหนด ตรวจแล้ว ความครอบคลุม ข้อบกพร่องพบใหม่/ปิดงาน แยกเดือนและหมวด — เหมาะสำหรับรายงานคณะกรรมการ</td></tr>
+    <tr><td>งานค้าง</td><td>งานตรวจที่ยังไม่ตรวจ/เกินกำหนด และข้อบกพร่องที่ยังไม่ปิด ณ วันที่ออกรายงาน</td></tr>
+    <tr><td>ทะเบียนและประวัติอุปกรณ์</td><td>ทะเบียนจุดตรวจ วันตรวจล่าสุด กำหนดครั้งถัดไป วันหมดอายุ</td></tr>
+    <tr><td>ผลการแก้ไข</td><td>ข้อบกพร่องที่พบในช่วงเวลา ผู้รับผิดชอบ กำหนดเสร็จ วันที่ปิด และจำนวนครั้งที่ส่งกลับ</td></tr>
+    <tr><td>ตารางตรวจรายปีรายอุปกรณ์</td><td>ตาราง ม.ค.–ธ.ค. แยกทีละจุดตรวจ</td></tr>
+  </tbody>
+</table>
+<figure><img class="desk s" src="img/43-report-print.png"><figcaption>ตัวอย่างหน้าพิมพ์รายงานสรุปรายเดือน (วันที่เป็นปี พ.ศ. ตามเวลาประเทศไทย)</figcaption></figure>
+
+<!-- ===================================================== ส่วนที่ 7 -->
+<div class="part" id="p7" data-toc="การใช้งานสำหรับผู้ดูแลระบบ"><div class="k">ส่วนที่ 7</div><h1>การใช้งานสำหรับผู้ดูแลระบบ</h1><p class="lead">การตั้งค่าครั้งแรก · หน่วยงาน · อาคาร · ผู้ใช้และสิทธิ์ · แบบตรวจ · การแจ้งเตือน · การดูแลระบบประจำ</p></div>
+<p>ส่วนนี้เขียนสำหรับผู้ดูแลระบบที่ <b>ไม่มีพื้นฐานด้านไอที</b> งานประจำวันทั้งหมดทำผ่านเมนู <b>ตั้งค่าระบบ</b> ในเว็บไซต์ ไม่ต้องเขียนโปรแกรม ส่วนบริการเบื้องหลัง (หัวข้อ 7.9) แทบไม่ต้องเข้าไปแตะ ยกเว้นเมื่อเกิดปัญหา</p>
+
+<h2 id="s7-1">7.1 รายการตรวจสอบการตั้งค่าครั้งแรก</h2>
+<p>ทำตามลำดับ ติ๊ก ☐ เมื่อทำเสร็จ</p>
+<div class="two">
+  <div class="card"><h4>ก. เตรียมโครงสร้าง</h4>
+    <ul class="check">
+      <li>เข้าสู่ระบบด้วยบัญชี @nu.ac.th ของผู้ดูแลระบบ (บัญชีแรกตั้งโดยผู้ติดตั้งระบบ)</li>
+      <li>ตรวจหน้า <b>ภาพลักษณ์</b>: ชื่อระบบ ชื่อมหาวิทยาลัย โดเมนอีเมล <code>nu.ac.th</code> (7.8)</li>
+      <li>เพิ่ม <b>หน่วยงาน</b>: คณะ กอง ศูนย์ (7.3)</li>
+      <li>เพิ่ม <b>อาคาร ชั้น ห้อง</b> (7.3)</li>
+      <li>ตรวจทาน <b>แบบตรวจ</b> ร่วมกับผู้เชี่ยวชาญ (7.5)</li>
+    </ul></div>
+  <div class="card"><h4>ข. เตรียมคนและงาน</h4>
+    <ul class="check">
+      <li>แจ้งบุคลากรให้เข้าสู่ระบบด้วย Google ครั้งแรก แล้ว <b>กำหนดบทบาท</b> (7.4) หรือลงทะเบียนอีเมลล่วงหน้า</li>
+      <li>ให้ผู้ดูแลคณะลงทะเบียน <b>จุดตรวจ</b> และ <b>พิมพ์ป้าย QR</b> (3.1–3.3)</li>
+      <li>สร้าง <b>แผนการตรวจ</b> และ <b>มอบหมายผู้ตรวจ</b> (3.4–3.5)</li>
+      <li>ตั้งค่า <b>การแจ้งเตือน</b> (7.6)</li>
+      <li>ทดลองตรวจ 1 จุดจนปิดงานครบวงจร (ส่วนที่ 2–5)</li>
+    </ul></div>
+</div>
+
+<h2 id="s7-2">7.2 เมนูตั้งค่าระบบ</h2>
+<figure><img class="desk" src="img/50-settings.png"><figcaption>หน้าตั้งค่าระบบ</figcaption></figure>
+<ol class="co">
+  <li><b>หน่วยงาน</b> — โครงสร้างมหาวิทยาลัย → คณะ/หน่วยงาน (เฉพาะผู้ดูแลระบบ)</li>
+  <li><b>อาคาร ชั้น และห้อง</b> — ข้อมูลตำแหน่งสำหรับทะเบียนจุดตรวจ</li>
+  <li><b>ผู้ใช้และสิทธิ์</b> — เพิ่มผู้ใช้ กำหนดบทบาทตามหน่วยงาน ระงับบัญชี</li>
+  <li><b>แบบตรวจ</b> — สร้าง/ปรับแบบตรวจ จัดการเวอร์ชัน และแหล่งอ้างอิง</li>
+  <li><b>การแจ้งเตือน</b> — ระยะเวลาเตือน การยกระดับเรื่อง และอีเมล</li>
+  <li><b>ภาพลักษณ์และการเข้าสู่ระบบ</b> — ชื่อระบบ สี ตรามหาวิทยาลัย โดเมนอีเมลที่อนุญาต</li>
+  <li><b>ประวัติการใช้งาน (Audit log)</b> — ตรวจสอบการเปลี่ยนแปลงข้อมูลย้อนหลัง</li>
+</ol>
+<p>กล่องสีเหลือง “การเชื่อมต่อระบบภายนอก” ด้านล่างบอกสถานะ เช่น ยังไม่ได้ตั้งค่าอีเมล (SMTP) — <b>เป็นข้อมูลแจ้งให้ทราบ ไม่ใช่ข้อผิดพลาด</b></p>
+
+<h2 id="s7-3">7.3 หน่วยงาน และ อาคาร ชั้น ห้อง</h2>
+<figure><img class="desk" src="img/51-organizations.png"><figcaption>หน้าหน่วยงาน</figcaption></figure>
+<ol class="co">
+  <li><b>โครงสร้างหน่วยงาน</b> — แสดงแบบลำดับชั้น (มหาวิทยาลัย → คณะ/กอง → ภาควิชา) กด “ปิดใช้งาน” เมื่อยุบหน่วยงาน (ไม่ลบเพื่อเก็บประวัติ)</li>
+  <li><b>สังกัด</b> — หน่วยงานแม่ เช่น ภาควิชาสังกัดคณะ</li>
+  <li><b>รหัส</b> — ตัวย่อภาษาอังกฤษ เช่น <code>PHS</code></li>
+  <li><b>ชื่อ (ไทย)</b> และชื่อภาษาอังกฤษ</li>
+  <li><b>ประเภท</b> — มหาวิทยาลัย / คณะ / กอง-สำนักงาน / ภาควิชา ฯลฯ</li>
+  <li>กด <b>เพิ่มหน่วยงาน</b></li>
+</ol>
+<figure><img class="desk" src="img/52-locations.png"><figcaption>หน้าอาคาร ชั้น และห้อง/พื้นที่</figcaption></figure>
+<ol class="co">
+  <li><b>อาคาร</b> — กดชื่ออาคารเพื่อเลือก กด “+ เพิ่มอาคาร” เพื่อเพิ่ม: หน่วยงานเจ้าของ รหัสอาคาร ชื่ออาคาร และ <b>จำนวนชั้น</b> (ระบบสร้างชั้นให้อัตโนมัติ)</li>
+  <li><b>ชั้น</b> — ชั้นของอาคารที่เลือก เพิ่มชั้นพิเศษได้ เช่น ชั้นใต้ดิน ดาดฟ้า</li>
+  <li><b>ห้อง/พื้นที่</b> — เลือกชั้น ใส่ชื่อห้อง เลขห้อง และประเภท (ทั่วไป ห้องปฏิบัติการ ฯลฯ)</li>
+</ol>
+
+<h2 id="s7-4">7.4 ผู้ใช้และสิทธิ์</h2>
+<figure><img class="desk" src="img/53-users.png"><figcaption>หน้าผู้ใช้และสิทธิ์</figcaption></figure>
+<ol class="co">
+  <li><b>ค้นหา</b> ชื่อหรืออีเมล</li>
+  <li><b>รอกำหนดสิทธิ์ (จำนวน)</b> — ผู้ใช้ที่เข้าสู่ระบบด้วย Google แล้วแต่ยังไม่มีบทบาท ระบบแจ้งเตือนผู้ดูแลเมื่อมีคนใหม่ <b>ควรตรวจทุกวันทำการ</b></li>
+  <li><b>+ เพิ่มบทบาท</b> — กำหนดบทบาทเพิ่มให้ผู้ใช้ · ปุ่ม “ถอน” ข้างบทบาท ใช้ยกเลิกบทบาทนั้น</li>
+  <li><b>ระงับ</b> — ปิดการใช้งานบัญชีของผู้ที่ย้ายงาน/ลาออก (ใช้แทนการลบ เพื่อรักษาประวัติ)</li>
+  <li><b>เพิ่มผู้ใช้ใหม่</b> — ลงทะเบียนอีเมล @nu.ac.th ล่วงหน้าพร้อมหน่วยงานและบทบาทเริ่มต้น เมื่อคนนั้นเข้าสู่ระบบด้วย Google ครั้งแรกจะได้สิทธิ์ทันที (<b>เว้นช่องรหัสผ่านว่างไว้</b>)</li>
+</ol>
+<h4>กำหนดบทบาทให้ผู้ใช้ใหม่ (สิ่งที่ทำบ่อยที่สุด)</h4>
+<figure><img class="desk" src="img/54-users-addrole.png"><figcaption>กำหนดบทบาทให้ผู้ใช้ที่รอกำหนดสิทธิ์</figcaption></figure>
+<ol class="co">
+  <li>ผู้ใช้ที่มีป้าย <span class="pill y">รอกำหนดสิทธิ์</span> — กด “+ เพิ่มบทบาท” ในแถวนั้น</li>
+  <li>เลือก <b>บทบาท</b> เช่น ผู้ตรวจ</li>
+  <li>เลือก <b>หน่วยงาน</b> ที่บทบาทนี้มีผล (ครอบคลุมหน่วยงานย่อย)</li>
+  <li>กด <b>เพิ่ม</b> — แจ้งให้ผู้ใช้กดรีเฟรชหน้าจอ</li>
+</ol>
+<div class="note warn"><span class="h">หลักการให้สิทธิ์</span>
+  <ul><li>ให้สิทธิ์ <b>น้อยที่สุดเท่าที่จำเป็น</b> และที่ <b>หน่วยงานเล็กที่สุด</b> ที่ครอบคลุมงาน</li>
+  <li>บทบาท “ผู้ดูแลระบบมหาวิทยาลัย” ให้เฉพาะผู้ที่ดูแลระบบจริง 1–2 คน</li>
+  <li>ผู้ดูแลคณะกำหนดบทบาทได้เฉพาะในคณะตน และให้บทบาทระดับส่วนกลาง (ผู้ดูแลระบบ/ผู้ประสานงานส่วนกลาง) ไม่ได้</li>
+  <li>ทุกการให้/ถอนสิทธิ์ถูกบันทึกในประวัติการใช้งาน</li></ul></div>
+
+<h2 id="s7-5">7.5 แบบตรวจและเวอร์ชัน</h2>
+<figure><img class="desk" src="img/55-checklists.png"><figcaption>รายการแบบตรวจ</figcaption></figure>
+<ol class="co">
+  <li><span class="pill y">ร่างสำหรับผู้เชี่ยวชาญตรวจรับรอง</span> — แบบตรวจตัวอย่างทุกฉบับมีป้ายนี้ จนกว่าผู้เชี่ยวชาญจะตรวจรับรองและระบุแหล่งอ้างอิง</li>
+  <li><b>สร้างแบบตรวจใหม่</b> — รหัส ชื่อ หมวด ใช้กับ (ทั้งมหาวิทยาลัย หรือเฉพาะหน่วยงาน) แล้วกด “สร้างและแก้ไขรายการ”</li>
+</ol>
+<figure><img class="desk" src="img/56-checklist-detail.png"><figcaption>รายละเอียดแบบตรวจ</figcaption></figure>
+<ol class="co">
+  <li><b>เวอร์ชันและสถานะ</b> — เช่น “v1 · ใช้งานอยู่”</li>
+  <li><b>สร้างเวอร์ชันใหม่เพื่อแก้ไข</b> — เวอร์ชันที่เผยแพร่แล้ว <b>แก้ไขไม่ได้</b> ต้องสร้างเวอร์ชันใหม่ ระบบคัดลอกหัวข้อเดิมให้</li>
+  <li><b>หัวข้อการตรวจ</b> — แต่ละข้อมี หัวข้อ คำอธิบาย/เกณฑ์ วิธีตรวจ ระดับความสำคัญ อนุญาต “ไม่เกี่ยวข้อง” หรือไม่ และบังคับแนบภาพเมื่อไม่ผ่านหรือไม่</li>
+  <li><b>ข้อมูลเวอร์ชัน</b> — สถานะร่าง/รับรอง และแหล่งอ้างอิง</li>
+</ol>
+<h4>ขั้นตอนปรับปรุงแบบตรวจ</h4>
+<ol class="steps">
+  <li>กด <b>สร้างเวอร์ชันใหม่เพื่อแก้ไข</b> → แก้ไข/เพิ่ม/ลบหัวข้อ</li>
+  <li>ถ้าต้องการอ้างอิงกฎหมาย/มาตรฐาน ให้ระบุ <b>แหล่ง ฉบับ และวันที่ตรวจสอบ</b> ให้ครบทุกช่อง</li>
+  <li>การยกเลิกสถานะ “ร่าง” ต้องระบุ <b>ผู้เชี่ยวชาญที่รับรอง</b> (ระบบบังคับ)</li>
+  <li>กรอก “บันทึกการเปลี่ยนแปลง” แล้วกด <b>เผยแพร่เวอร์ชันนี้</b> — การตรวจใหม่ใช้เวอร์ชันนี้ ผลตรวจเดิมยังแสดงเกณฑ์ของเวอร์ชันที่ใช้ในวันตรวจ</li>
+</ol>
+<div class="note danger"><span class="h">ห้ามอ้างว่าเป็นไปตามกฎหมาย หากยังไม่มีแหล่งอ้างอิง</span>เกณฑ์ในแบบตรวจตัวอย่างเป็นร่างเพื่อเริ่มใช้งาน ต้องให้ผู้เชี่ยวชาญด้านความปลอดภัยของมหาวิทยาลัยตรวจทานก่อนนำไปอ้างอิงอย่างเป็นทางการ</div>
+
+<h2 id="s7-6">7.6 การแจ้งเตือน</h2>
+<figure><img class="desk" src="img/57-notifications.png"><figcaption>หน้าตั้งค่าการแจ้งเตือน</figcaption></figure>
+<ol class="co">
+  <li><b>ค่าตั้งต้นของมหาวิทยาลัย</b> — ใช้กับทุกหน่วยงาน
+    <ul>
+      <li><b>เตือนล่วงหน้าก่อนครบกำหนด (วัน)</b> — ค่าเริ่มต้น 3 วัน</li>
+      <li><b>ยกระดับเมื่อเกินกำหนด (วัน)</b> — เกินกำหนดกี่วันจึงแจ้งผู้บังคับบัญชา ค่าเริ่มต้น 7 วัน</li>
+      <li><b>ผู้รับการยกระดับเรื่อง</b> — ติ๊กบทบาทที่จะได้รับแจ้ง</li>
+      <li><b>ส่งอีเมลด้วย</b> และประเภทการแจ้งที่เปิด/ปิด</li>
+    </ul></li>
+  <li><b>ค่าเฉพาะหน่วยงาน</b> — เลือกหน่วยงานแล้วกำหนดค่าแทนค่าตั้งต้น เช่น หน่วยงานที่มีความเสี่ยงสูงให้เตือนเร็วขึ้น</li>
+</ol>
+<div class="note info"><span class="h">ถ้าเห็น “ยังไม่ได้ตั้งค่า SMTP”</span>แปลว่าระบบยังไม่มีบัญชีสำหรับส่งอีเมล การแจ้งเตือนจะแสดงเฉพาะในระบบ (กระดิ่ง) การตั้งค่าอีเมลต้องให้ผู้ติดตั้งระบบหรือฝ่ายไอทีใส่ค่า SMTP ใน Vercel (ดูคู่มือติดตั้ง <code>docs/DEPLOY_GUIDE.md</code>)</div>
+
+<h2 id="s7-7">7.7 ประวัติการใช้งาน (Audit log)</h2>
+<figure><img class="desk s" src="img/59-audit.png"><figcaption>หน้าประวัติการใช้งาน</figcaption></figure>
+<p>ทุกการเพิ่ม/แก้ไข/ลบข้อมูลสำคัญถูกบันทึกอัตโนมัติ: <b>ใครทำ เวลาใด ตารางใด และฟิลด์ใดเปลี่ยนจากค่าใดเป็นค่าใด</b> ประวัตินี้แก้ไขหรือลบไม่ได้ ใช้ตรวจสอบเมื่อมีข้อสงสัย เช่น ใครเปลี่ยนสถานะอุปกรณ์ หรือใครให้สิทธิ์ผู้ใช้</p>
+
+<h2 id="s7-8">7.8 ภาพลักษณ์และการเข้าสู่ระบบ</h2>
+<figure><img class="desk s" src="img/58-branding.png"><figcaption>หน้าภาพลักษณ์และการเข้าสู่ระบบ</figcaption></figure>
+<ol class="co">
+  <li><b>โดเมนอีเมลที่อนุญาตให้เข้าสู่ระบบด้วย Google</b> — ค่าปัจจุบัน <code>nu.ac.th</code> บัญชี Google นอกโดเมนนี้จะถูกปฏิเสธ <b>อย่าแก้ไขค่านี้</b> หากไม่แน่ใจ</li>
+  <li><b>ไฟล์ตรามหาวิทยาลัย</b> — ระบบใช้ตรามหาวิทยาลัยนเรศวรเป็นค่าเริ่มต้นแล้ว อัปโหลดใหม่เฉพาะเมื่อต้องการเปลี่ยน (PNG/SVG/WebP/JPG ไม่เกิน 2 MB)</li>
+</ol>
+
+<h2 id="s7-9">7.9 บริการเบื้องหลังของระบบ (สำหรับรู้ไว้)</h2>
+<p>ระบบทำงานบนบริการออนไลน์ 4 แห่ง ผู้ดูแลระบบควรรู้ว่าแต่ละแห่งทำหน้าที่อะไร และ <b>เก็บรหัสผ่านเข้าบริการเหล่านี้ไว้อย่างปลอดภัย</b></p>
+<table>
+  <thead><tr><th style="width:18%">บริการ</th><th style="width:34%">หน้าที่</th><th>เข้าไปเมื่อใด</th></tr></thead>
+  <tbody>
+    <tr><td><b>Vercel</b></td><td>ที่ตั้งเว็บไซต์ (หน้าจอที่ผู้ใช้เปิด)</td><td>เว็บเปิดไม่ได้ · ต้องเพิ่มค่าตั้งค่า เช่น SMTP · ดูว่าระบบอัปเดตเวอร์ชันใหม่สำเร็จหรือไม่ (เมนู Deployments)</td></tr>
+    <tr><td><b>Supabase</b></td><td>ฐานข้อมูล การเข้าสู่ระบบ และไฟล์ภาพทั้งหมด</td><td>ตั้งผู้ดูแลระบบคนแรก · โครงการถูกพักการใช้งาน · ตั้งค่าการเข้าสู่ระบบด้วย Google</td></tr>
+    <tr><td><b>Google Cloud</b></td><td>รหัสสำหรับปุ่ม “เข้าสู่ระบบด้วย Google”</td><td>แทบไม่ต้องเข้า ยกเว้นปุ่ม Google ใช้งานไม่ได้</td></tr>
+    <tr><td><b>GitHub</b></td><td>เก็บโค้ดโปรแกรม (ต้นฉบับของระบบ)</td><td>เมื่อผู้พัฒนาปรับปรุงระบบ — ควรตั้งเป็น <b>Private</b></td></tr>
+  </tbody>
+</table>
+<div class="note danger"><span class="h">ข้อมูลลับ — ห้ามส่งต่อ</span>ห้ามส่ง <b>Secret key / service_role key ของ Supabase</b>, <b>Client Secret ของ Google</b>, <b>CRON_SECRET</b> หรือรหัสผ่านบริการข้างต้น ทางแชต อีเมล หรือภาพหน้าจอ หากสงสัยว่ารั่วไหล ให้สร้างค่าใหม่ทันทีในบริการนั้น และแก้ค่าใน Vercel</div>
+<h4>หน้าตรวจความพร้อมของระบบ</h4>
+<p>เปิด <code>https://ลิงก์ของระบบ/setup-check</code> ได้โดยไม่ต้องเข้าสู่ระบบ หน้านี้ตรวจการตั้งค่าที่จำเป็นทั้งหมด (โดยไม่แสดงค่าลับ) แต่ละแถวมีเครื่องหมายถูก/กากบาท พร้อมคำแนะนำวิธีแก้ <b>เมื่อระบบมีปัญหา ให้เปิดหน้านี้เป็นอย่างแรก</b></p>
+
+<h2 id="s7-10">7.10 งานดูแลระบบประจำ</h2>
+<table>
+  <thead><tr><th style="width:17%">ความถี่</th><th>สิ่งที่ควรทำ</th></tr></thead>
+  <tbody>
+    <tr><td><b>ทุกวันทำการ</b></td><td>ตรวจ “รอกำหนดสิทธิ์” ในหน้าผู้ใช้ · ดูกระดิ่งแจ้งเตือน · ดูแถบ “รอมอบหมาย” และ “เร่งด่วน” ในติดตามแก้ไข</td></tr>
+    <tr><td><b>ทุกสัปดาห์</b></td><td>ดูแดชบอร์ด: งานตรวจเกินกำหนด งานแก้ไขเกินกำหนด · ติดตามผู้เกี่ยวข้อง</td></tr>
+    <tr><td><b>ทุกเดือน</b></td><td>ดาวน์โหลด <b>รายงาน Excel ทุกฉบับเก็บไว้เป็นสำเนา</b> (ในไดรฟ์ของหน่วยงาน) · ดูตัวกรอง “ใกล้หมดอายุ (60 วัน)” ในทะเบียนจุดตรวจ · ระงับบัญชีผู้ที่ย้าย/ลาออก</td></tr>
+    <tr><td><b>ทุกปี (ธ.ค.)</b></td><td>ตรวจว่าแผนการตรวจปีหน้าสร้างงานแล้ว (กด “สร้างงานถึงสิ้นปี” ตอนต้นปี) · ทบทวนแบบตรวจร่วมกับผู้เชี่ยวชาญ · ทบทวนรายชื่อผู้มีสิทธิ์</td></tr>
+  </tbody>
+</table>
+
+<h2 id="s7-11">7.11 แก้ปัญหาที่พบบ่อย</h2>
+<table>
+  <thead><tr><th style="width:33%">อาการ</th><th>สาเหตุที่เป็นไปได้ / วิธีแก้</th></tr></thead>
+  <tbody>
+    <tr><td>ผู้ใช้เข้าสู่ระบบแล้วขึ้น “ยังไม่ได้รับบทบาท”</td><td>ปกติสำหรับผู้ใช้ใหม่ → กำหนดบทบาทตามหัวข้อ 7.4 แล้วให้ผู้ใช้รีเฟรช</td></tr>
+    <tr><td>ขึ้น “ระบบนี้สำหรับบุคลากรเท่านั้น”</td><td>ผู้ใช้เลือกบัญชี Google ส่วนตัว → ให้กดเข้าสู่ระบบใหม่และเลือกบัญชี @nu.ac.th</td></tr>
+    <tr><td>ขึ้น “เข้าสู่ระบบด้วยบัญชีมหาวิทยาลัยไม่สำเร็จ” พร้อม “รายละเอียด: …”</td><td>จดข้อความในบรรทัด “รายละเอียด” ส่งให้ผู้ติดตั้งระบบ · ถ้าเป็น <i>PKCE code verifier not found</i> ให้ปิดแท็บแล้วเปิดหน้าเข้าสู่ระบบใหม่ กดปุ่ม Google ครั้งเดียว · ถ้าเป็น <i>Unable to exchange external code</i> แปลว่า Client ID/Secret ของ Google ใน Supabase ไม่ตรงกับใน Google Cloud</td></tr>
+    <tr><td>กด Google แล้วไปหน้า <code>localhost</code> หรือเว็บเก่า</td><td>Supabase → Authentication → URL Configuration: ตั้ง <b>Site URL</b> เป็นลิงก์จริงของระบบ และเพิ่ม <b>Redirect URLs</b> เป็น <code>https://ลิงก์ของระบบ/**</code></td></tr>
+    <tr><td>เว็บขึ้นหน้าตรวจการตั้งค่า หรือ Error 500</td><td>เปิด <code>/setup-check</code> ดูแถวที่เป็นกากบาท แก้ค่าใน Vercel → Settings → Environment Variables แล้ว Redeploy</td></tr>
+    <tr><td>ทั้งระบบเปิดไม่ได้หลังไม่มีคนใช้นาน</td><td>โครงการ Supabase แผนฟรีอาจถูก <b>พักชั่วคราว</b> เมื่อไม่มีการใช้งานต่อเนื่อง → เข้า Supabase แล้วกด <b>Restore project</b></td></tr>
+    <tr><td>ไม่ได้รับอีเมลแจ้งเตือน</td><td>ยังไม่ได้ตั้งค่า SMTP (ดู 7.6) หรือปิด “ส่งอีเมลด้วย” · การแจ้งเตือนในระบบยังทำงานปกติ</td></tr>
+    <tr><td>สแกน QR แล้วกล้องไม่เปิด</td><td>เบราว์เซอร์ไม่ได้รับอนุญาตใช้กล้อง → เปิดสิทธิ์กล้องในการตั้งค่าเบราว์เซอร์ หรือพิมพ์รหัสจุดตรวจแทน</td></tr>
+    <tr><td>สแกนแล้วขึ้น “ไม่มีสิทธิ์”</td><td>ผู้ตรวจไม่มีบทบาทในหน่วยงานเจ้าของจุดตรวจ → เพิ่มบทบาทผู้ตรวจให้หน่วยงานนั้น</td></tr>
+    <tr><td>ไม่มีงานตรวจขึ้นสำหรับอุปกรณ์ใหม่</td><td>อุปกรณ์เพิ่มหลังสร้างแผน → หน้าแผนการตรวจ กด “สร้างงานถึงสิ้นปี”</td></tr>
+  </tbody>
+</table>
+
+<!-- ===================================================== ภาคผนวก -->
+<div class="part" id="p8" data-toc="ภาคผนวก"><div class="k">ข้อมูลอ้างอิง</div><h1>ภาคผนวก</h1></div>
+
+<h2 id="a1">ก. สถานะของงานตรวจและข้อบกพร่อง</h2>
+<table>
+  <thead><tr><th style="width:30%">สถานะงานตรวจ</th><th>ความหมาย</th></tr></thead>
+  <tbody>
+    <tr><td><span class="pill n">ยังไม่ถึงกำหนด</span></td><td>ยังไม่ถึงวันเริ่มรอบ</td></tr>
+    <tr><td><span class="pill b">รอตรวจ</span></td><td>อยู่ในช่วงที่ต้องตรวจ ยังไม่เลยวันครบกำหนด</td></tr>
+    <tr><td><span class="pill g">ตรวจแล้ว</span></td><td>ส่งผลตรวจแล้ว (ถ้าส่งหลังวันครบกำหนดจะนับเป็น “ส่งช้า”)</td></tr>
+    <tr><td><span class="pill r">เกินกำหนด</span></td><td>เลยวันครบกำหนดแล้วยังไม่ส่งผล</td></tr>
+    <tr><td><span class="pill n">ยกเลิก</span></td><td>งานถูกยกเลิก เช่น อุปกรณ์จำหน่ายแล้ว (ไม่นับใน KPI)</td></tr>
+  </tbody>
+</table>
+<table>
+  <thead><tr><th style="width:30%">สถานะข้อบกพร่อง</th><th>ความหมาย</th></tr></thead>
+  <tbody>
+    <tr><td><span class="pill">พบข้อบกพร่อง (รอมอบหมาย)</span></td><td>สร้างจากผลตรวจ รอผู้ดูแลมอบหมายผู้รับผิดชอบ</td></tr>
+    <tr><td><span class="pill y">มอบหมายแล้ว (รอแก้ไข)</span></td><td>มีผู้รับผิดชอบและกำหนดเสร็จแล้ว รอรับงาน</td></tr>
+    <tr><td><span class="pill b">กำลังแก้ไข</span></td><td>ผู้รับผิดชอบรับงานแล้ว (หรือถูกส่งกลับแก้ไข)</td></tr>
+    <tr><td><span class="pill b">รอตรวจยืนยัน</span></td><td>ส่งผลแก้ไขแล้ว รอผู้ตรวจยืนยัน</td></tr>
+    <tr><td><span class="pill g">ปิดงาน</span></td><td>ผู้ตรวจยืนยันกด “ผ่าน — ปิดงาน” แล้ว</td></tr>
+  </tbody>
+</table>
+
+<h2 id="a2">ข. ระดับความเร่งด่วนของข้อบกพร่อง</h2>
+<table>
+  <thead><tr><th style="width:24%">ระดับ</th><th>ใช้เมื่อ (แนวทาง)</th><th style="width:30%">ระบบดำเนินการ</th></tr></thead>
+  <tbody>
+    <tr><td><span class="pill g">ต่ำ</span></td><td>ไม่กระทบความปลอดภัยโดยตรง เช่น ป้ายบันทึกการตรวจไม่เป็นปัจจุบัน</td><td>แจ้งผู้ดูแลหน่วยงานตามปกติ</td></tr>
+    <tr><td><span class="pill y">ปานกลาง</span></td><td>อาจลดประสิทธิภาพอุปกรณ์ ควรแก้ภายในรอบตรวจถัดไป</td><td>แจ้งผู้ดูแลหน่วยงานตามปกติ</td></tr>
+    <tr><td><span class="pill">สูง (เร่งด่วน)</span></td><td>อุปกรณ์อาจใช้งานไม่ได้เมื่อเกิดเหตุ เช่น ถังแรงดันต่ำ ไฟฉุกเฉินไม่ติด</td><td>แจ้งผู้ดูแลหน่วยงาน <b>และผู้ประสานงานส่วนกลางทันที</b></td></tr>
+    <tr><td><span class="pill r">วิกฤต (เร่งด่วนมาก)</span></td><td>เสี่ยงต่อชีวิตทันที เช่น ทางหนีไฟถูกล็อก/ปิดกั้น สายไฟชำรุดมีไฟรั่ว</td><td>แจ้งทันทีเหมือนระดับสูง — ควรมีมาตรการเบื้องต้นในวันเดียวกัน</td></tr>
+  </tbody>
+</table>
+<p class="small">หมายเหตุ: แนวทางข้างต้นเป็นตัวอย่างประกอบการตัดสินใจ หน่วยงานควรกำหนดเกณฑ์ของตนร่วมกับผู้เชี่ยวชาญด้านความปลอดภัย</p>
+
+<h2 id="a3">ค. การแจ้งเตือนที่ระบบส่ง</h2>
+<table>
+  <thead><tr><th style="width:38%">เหตุการณ์</th><th>ผู้รับ</th></tr></thead>
+  <tbody>
+    <tr><td>ได้รับมอบหมายงานตรวจ</td><td>ผู้ตรวจที่ได้รับมอบหมาย</td></tr>
+    <tr><td>งานตรวจใกล้ครบกำหนด / เกินกำหนด</td><td>ผู้ตรวจ (วันละครั้ง ประมาณ 08.00 น.)</td></tr>
+    <tr><td>ยกระดับ: งานตรวจเกินกำหนด</td><td>บทบาทที่ตั้งไว้ในหน้าการแจ้งเตือน (ค่าเริ่มต้น: ผู้ดูแลหน่วยงาน และผู้ประสานงานส่วนกลาง)</td></tr>
+    <tr><td>พบข้อบกพร่องใหม่ รอมอบหมาย</td><td>ผู้ดูแลหน่วยงาน (ระดับสูง/วิกฤต แจ้งผู้ประสานงานส่วนกลางด้วย)</td></tr>
+    <tr><td>ได้รับมอบหมายงานแก้ไข</td><td>ผู้รับผิดชอบแก้ไข</td></tr>
+    <tr><td>งานแก้ไขใกล้ครบกำหนด / เกินกำหนด</td><td>ผู้รับผิดชอบแก้ไข</td></tr>
+    <tr><td>ยกระดับ: งานแก้ไขเกินกำหนด</td><td>บทบาทที่ตั้งไว้ในหน้าการแจ้งเตือน</td></tr>
+    <tr><td>มีผลการแก้ไขรอตรวจยืนยัน</td><td>ผู้ตรวจยืนยันของหน่วยงานนั้น</td></tr>
+    <tr><td>ผลการตรวจยืนยัน (ผ่าน/ส่งกลับ)</td><td>ผู้รับผิดชอบแก้ไข</td></tr>
+    <tr><td>ผู้ใช้ใหม่รอกำหนดสิทธิ์</td><td>ผู้ดูแลระบบ และผู้ประสานงานส่วนกลาง</td></tr>
+  </tbody>
+</table>
+
+<h2 id="a4">ง. คำถามที่พบบ่อย</h2>
+<div class="faq">
+  <h4>ใช้มือถือของตัวเองตรวจได้หรือไม่?</h4>
+  <p>ได้ ใช้ได้ทั้ง Android และ iPhone ผ่านเบราว์เซอร์ ไม่ต้องติดตั้งแอป แนะนำให้ “เพิ่มลงในหน้าจอหลัก” (หัวข้อ 1.7)</p>
+  <h4>ส่งผลตรวจผิด แก้ไขได้หรือไม่?</h4>
+  <p>ผลตรวจที่ส่งแล้วแก้ไขไม่ได้ เพื่อความน่าเชื่อถือของข้อมูล ให้แจ้งผู้ดูแลหน่วยงาน ถ้าข้อบกพร่องที่เกิดจากการกดผิดไม่มีอยู่จริง ให้ดำเนินการตามขั้นตอนปกติ: ผู้ดูแลมอบหมายผู้รับผิดชอบ → ผู้รับผิดชอบตรวจซ้ำที่หน้างาน แนบภาพ และเขียนสรุปว่า “ตรวจซ้ำแล้วไม่พบข้อบกพร่อง (บันทึกผิดพลาด)” → ผู้ตรวจยืนยันปิดงาน ประวัติจะบันทึกเหตุผลไว้ครบถ้วน</p>
+  <h4>ตรวจนอกรอบได้หรือไม่ เช่น หลังเกิดเหตุ?</h4>
+  <p>ได้ สแกน QR แล้วกด “เริ่มตรวจ (นอกรอบ)” ผลตรวจถูกบันทึกในประวัติอุปกรณ์เช่นเดียวกัน</p>
+  <h4>ทำไมคะแนนไม่นับข้อ “ไม่เกี่ยวข้อง”?</h4>
+  <p>เพื่อไม่ให้อุปกรณ์ที่ไม่มีส่วนประกอบบางอย่างเสียคะแนน คะแนน = ผ่าน ÷ (ผ่าน + ไม่ผ่าน) × 100</p>
+  <h4>ผู้แก้ไขกับผู้ตรวจยืนยันเป็นคนเดียวกันได้หรือไม่?</h4>
+  <p>ไม่ได้ ระบบบังคับแยกหน้าที่ ผู้แก้ไขยืนยันงานของตนเองไม่ได้ หน่วยงานเล็กที่มีคนน้อยให้ผู้ดูแลหน่วยงานหรือผู้ประสานงานส่วนกลางเป็นผู้ตรวจยืนยัน</p>
+  <h4>ข้อมูลภาพถ่ายเก็บที่ไหน ใครเห็นได้บ้าง?</h4>
+  <p>เก็บในพื้นที่จัดเก็บแบบส่วนตัวของระบบ เปิดดูได้เฉพาะผู้ที่เข้าสู่ระบบและมีสิทธิ์ในหน่วยงานนั้น ลิงก์ภาพหมดอายุภายใน 10 นาที ส่งต่อให้บุคคลภายนอกเปิดไม่ได้</p>
+  <h4>ป้าย QR ถูกถ่ายรูปไปโดยคนนอก ข้อมูลรั่วหรือไม่?</h4>
+  <p>ไม่รั่ว QR มีเพียงรหัสอ้างอิงแบบสุ่ม ผู้สแกนต้องเข้าสู่ระบบด้วยบัญชี @nu.ac.th และมีสิทธิ์ในหน่วยงานนั้นจึงเห็นรายละเอียด</p>
+  <h4>ระบบเชื่อมกับระบบแจ้งซ่อมของกองอาคารสถานที่หรือไม่?</h4>
+  <p>ยังไม่เชื่อมต่อ ใบงานต้องพิมพ์/บันทึก PDF แล้วส่งด้วยตนเอง (หัวข้อ 3.7)</p>
+</div>
+<p class="small" style="margin-top:8mm">หมายเหตุ: ชื่อบุคคล อีเมล และข้อมูลในภาพและตัวอย่างทั้งหมดเป็นข้อมูลสมมติเพื่อประกอบคู่มือ</p>
+</div>
+</body>
+</html>
