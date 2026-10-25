@@ -13,7 +13,7 @@ export default async function BrandingPage() {
     <>
       <PageHeader title="ภาพลักษณ์และการเข้าสู่ระบบ" back={{ href: "/settings", label: "ตั้งค่าระบบ" }} />
       <div className="max-w-2xl space-y-4">
-        <Notice tone="warning">ระบบไม่สร้างตรามหาวิทยาลัยขึ้นเอง — กรุณาอัปโหลดไฟล์ตราทางการที่ได้รับอนุญาตจากหน่วยงานที่ดูแลอัตลักษณ์องค์กร หากไม่อัปโหลด ระบบจะแสดงอักษร “NU” แทน</Notice>
+        <Notice tone="info">ระบบใช้ตรามหาวิทยาลัยนเรศวรที่ติดมากับระบบเป็นค่าเริ่มต้น — อัปโหลดไฟล์ใหม่เฉพาะเมื่อต้องการเปลี่ยนตรา (ใช้ไฟล์ทางการที่ได้รับอนุญาตจากหน่วยงานที่ดูแลอัตลักษณ์องค์กร)</Notice>
         <Card>
           <SimpleForm action="saveBranding">
             <Field label="ชื่อระบบ"><input name="app_name" defaultValue={a.app_name} className={inputClass} /></Field>

@@ -8,7 +8,9 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   // ขากลับจาก Google/Supabase ถูกส่งมาผิดหน้า (เช่น Site URL) แต่มีรหัสยืนยันติดมา → ส่งต่อไป /auth/callback
   const sp = request.nextUrl.searchParams;
-  if (path !== "/auth/callback" && (sp.has("code") || (sp.has("error") && sp.has("error_description")))) {
+  // เฉพาะรหัสรูปแบบ UUID ของ Supabase — ?code= อื่น ๆ เช่น ค้นหารหัสจุดตรวจ (/q/lookup?code=FE-EN1-101) ใช้งานได้ตามปกติ
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (path !== "/auth/callback" && path !== "/q/lookup" && (UUID.test(sp.get("code") ?? "") || (sp.has("error") && sp.has("error_description")))) {
     const cb = request.nextUrl.clone();
     cb.pathname = "/auth/callback";
     return NextResponse.redirect(cb);

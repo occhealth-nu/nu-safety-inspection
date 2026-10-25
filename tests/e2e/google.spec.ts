@@ -46,10 +46,22 @@ test("ผู้ดูแลลงทะเบียนบุคลากรล�
 });
 
 test("ถ้า Supabase ส่งกลับมาผิดหน้า (มี code ติดมา) ระบบส่งต่อไป /auth/callback เอง ไม่ขึ้นหน้าไม่พบ", async ({ page }) => {
-  const res = await page.goto("/some/wrong/path?code=invalid-test-code");
+  const res = await page.goto("/some/wrong/path?code=00000000-0000-4000-8000-000000000000");
   expect(res?.status()).toBeLessThan(400);
   await expect(page).toHaveURL(/\/login\?error=sso/);   // code ทดสอบไม่ถูกต้อง → แจ้งเข้าสู่ระบบไม่สำเร็จ (ไม่ใช่ 404)
   await expect(page.getByText(/เข้าสู่ระบบด้วยบัญชีมหาวิทยาลัยไม่สำเร็จ/)).toBeVisible();
+});
+
+test("ค้นหาด้วยรหัสจุดตรวจ (?code=) ไม่ถูกส่งไปหน้าเข้าสู่ระบบ Google", async ({ page }) => {
+  await page.goto("/login");
+  await page.locator("summary").click();
+  await page.getByLabel("อีเมล").fill("inspector.eng@demo.example.com");
+  await page.getByLabel("รหัสผ่าน").fill(process.env.DEMO_PASSWORD ?? "Demo-Only-Pass-2569");
+  await page.getByRole("button", { name: "เข้าสู่ระบบ", exact: true }).click();
+  await page.waitForURL((u) => !u.pathname.startsWith("/login"));
+  await page.goto("/q/lookup?code=FE-EN1-101");
+  await expect(page).toHaveURL(/\/q\/[0-9a-f]+$/);
+  await expect(page.getByText("FE-EN1-101").first()).toBeVisible();
 });
 
 test("ปุ่ม Google ใช้ที่อยู่เว็บที่เปิดอยู่จริงเป็นปลายทางขากลับ", async ({ page }) => {
