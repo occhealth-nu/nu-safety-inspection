@@ -16,8 +16,13 @@ export interface Profile {
 export interface SessionContext { profile: Profile | null; roles: RoleAssignment[]; unread_notifications: number }
 
 export interface Organization { id: string; parent_id: string | null; code: string; name_th: string; name_en: string | null; org_type: string; ancestors: string[]; is_active: boolean }
-export interface Building { id: string; organization_id: string; code: string; name: string; description: string | null; is_active: boolean }
-export interface Floor { id: string; building_id: string; name: string; level: number }
+export interface Campus { id: string; code: string; name: string; address: string | null; latitude: number | null; longitude: number | null; sort_order: number; is_active: boolean }
+export interface Zone { id: string; campus_id: string; code: string; name: string; description: string | null; sort_order: number; is_active: boolean }
+export interface Building {
+  id: string; organization_id: string; code: string; name: string; description: string | null; is_active: boolean;
+  campus_id: string | null; zone_id: string | null; latitude: number | null; longitude: number | null; address: string | null;
+}
+export interface Floor { id: string; building_id: string; name: string; level: number; plan_path: string | null; plan_updated_at: string | null }
 export interface Location { id: string; floor_id: string; name: string; room_no: string | null; location_type: string | null }
 export interface AssetType { id: string; code: string; name: string; category: string; default_template_id: string | null; default_frequency: Frequency; tracks_expiry: boolean }
 
@@ -29,6 +34,9 @@ export interface AssetRow {
   status: AssetStatus; qr_token: string; photo_path: string | null; notes: string | null;
   asset_type_name: string; category: string; tracks_expiry: boolean; building_name: string; floor_name: string | null;
   location_name: string | null; organization_name: string; responsible_name: string | null; open_findings: number;
+  plan_x: number | null; plan_y: number | null; latitude: number | null; longitude: number | null;
+  building_code: string; campus_id: string | null; zone_id: string | null; campus_name: string | null; zone_name: string | null;
+  floor_level: number | null; urgent_findings: number; overdue_tasks: number;
 }
 
 export interface TaskRow {
@@ -50,6 +58,9 @@ export interface FindingRow {
   asset_code: string; asset_name: string; building_id: string; location_detail: string | null; category: string;
   asset_type_name: string; building_name: string; organization_name: string; assignee_name: string | null;
   responsible_org_name: string | null; remediation_group: string; is_overdue: boolean; is_urgent_open: boolean;
+  plan_x: number | null; plan_y: number | null; location_note: string | null; campus_id: string | null; zone_id: string | null;
+  floor_id: string | null; location_id: string | null; floor_name: string | null; location_name: string | null;
+  asset_plan_x: number | null; asset_plan_y: number | null;
 }
 
 export interface ChecklistItem {

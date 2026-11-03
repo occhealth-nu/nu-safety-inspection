@@ -4,16 +4,19 @@ import { Field, buttonClass, inputClass } from "@/components/ui";
 import { FormMessage, useActionForm } from "@/components/action-button";
 import { ASSET_STATUS_LABELS, FREQUENCY_LABELS } from "@/lib/labels";
 import type { AssetType, Building, Floor, Location, Organization } from "@/lib/types";
+import { PlanPicker } from "@/components/location/plan-picker";
+import { GeoInputs } from "@/components/location/geo-inputs";
 
 export interface AssetFormValues {
   id?: string; code?: string; name?: string; asset_type_id?: string; organization_id?: string; building_id?: string; floor_id?: string | null;
   location_id?: string | null; location_detail?: string | null; responsible_user_id?: string | null; brand_model?: string | null; serial_no?: string | null;
   installed_on?: string | null; expires_on?: string | null; frequency?: string; custom_interval_days?: number | null; status?: string; notes?: string | null;
+  plan_x?: number | null; plan_y?: number | null; latitude?: number | null; longitude?: number | null;
 }
 
-export function AssetForm({ initial = {}, orgs, buildings, floors, locations, types, people }: {
+export function AssetForm({ initial = {}, orgs, buildings, floors, locations, types, people, planUrls = {} }: {
   initial?: AssetFormValues; orgs: Organization[]; buildings: Building[]; floors: Floor[]; locations: Location[]; types: AssetType[];
-  people: { id: string; full_name: string }[];
+  people: { id: string; full_name: string }[]; planUrls?: Record<string, string>;
 }) {
   const { state, pending, onSubmit } = useActionForm("saveAsset");
   const [building, setBuilding] = useState(initial.building_id ?? "");
@@ -23,6 +26,9 @@ export function AssetForm({ initial = {}, orgs, buildings, floors, locations, ty
   const fl = useMemo(() => floors.filter((f) => f.building_id === building).sort((a, b) => a.level - b.level), [floors, building]);
   const lc = useMemo(() => locations.filter((l) => l.floor_id === floor), [locations, floor]);
   const t = types.find((x) => x.id === type);
+  const floorRow = floors.find((f) => f.id === floor);
+  const planUrl = floorRow?.plan_path ? planUrls[floorRow.plan_path] ?? null : null;
+  const initialPin = floor === (initial.floor_id ?? "") && initial.plan_x != null && initial.plan_y != null ? { x: Number(initial.plan_x), y: Number(initial.plan_y) } : null;
   return (
     <form onSubmit={onSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2">
       {initial.id && <input type="hidden" name="id" value={initial.id} />}
@@ -46,6 +52,19 @@ export function AssetForm({ initial = {}, orgs, buildings, floors, locations, ty
         <Field label="ห้อง/พื้นที่"><select name="location_id" defaultValue={initial.location_id ?? ""} className={inputClass} key={floor}><option value="">—</option>{lc.map((l) => <option key={l.id} value={l.id}>{l.name}{l.room_no ? ` (${l.room_no})` : ""}</option>)}</select></Field>
       </div>
       <Field label="รายละเอียดตำแหน่ง" hint="เช่น ข้างประตูทางออกฝั่งทิศเหนือ"><input name="location_detail" defaultValue={initial.location_detail ?? ""} className={inputClass} /></Field>
+      <fieldset className="md:col-span-2 rounded-xl border border-gray-200 p-3" data-testid="asset-location">
+        <legend className="px-1 text-sm font-semibold text-ink">ตำแหน่งบนผังชั้น (ไม่บังคับ แต่แนะนำ)</legend>
+        {floor ? (
+          <>
+            <p className="mb-2 text-xs text-gray-600">{planUrl ? "แตะบนผังตรงตำแหน่งที่ติดตั้งอุปกรณ์จริง" : "ชั้นนี้ยังไม่มีภาพผัง — ปักหมุดบนตารางอ้างอิงได้ หรือให้ผู้ดูแลอัปโหลดผังชั้นที่ ตั้งค่าระบบ › สถานที่"}</p>
+            <div className="max-w-2xl"><PlanPicker key={floor} planUrl={planUrl} value={initialPin} label="ตำแหน่งจุดตรวจ" /></div>
+          </>
+        ) : (
+          <><p className="text-xs text-gray-600">เลือก “ชั้น” ก่อน จึงจะปักหมุดบนผังได้</p><input type="hidden" name="plan_x" value="" /><input type="hidden" name="plan_y" value="" /></>
+        )}
+        <div className="mt-3 max-w-xl"><GeoInputs lat={initial.latitude} lng={initial.longitude} label="พิกัด GPS ของจุดตรวจ (สำหรับจุดภายนอกอาคาร)"
+          hint="ไม่ต้องระบุถ้าจุดอยู่ในอาคาร — ระบบใช้พิกัดของอาคารแทน" /></div>
+      </fieldset>
       <Field label="ผู้รับผิดชอบ"><select name="responsible_user_id" defaultValue={initial.responsible_user_id ?? ""} className={inputClass}><option value="">—</option>{people.map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}</select></Field>
       <Field label="ยี่ห้อ/รุ่น"><input name="brand_model" defaultValue={initial.brand_model ?? ""} className={inputClass} /></Field>
       <Field label="หมายเลขเครื่อง"><input name="serial_no" defaultValue={initial.serial_no ?? ""} className={inputClass} /></Field>

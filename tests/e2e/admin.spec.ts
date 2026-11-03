@@ -57,10 +57,10 @@ test("ผู้ดูแลคณะ: สร้างจุดตรวจ → �
 });
 
 const PAGES: Record<string, string[]> = {
-  admin: ["/", "/tasks", "/plans", "/inspect", "/assets", "/findings", "/reports", "/reports/annual", "/notifications", "/settings",
+  admin: ["/", "/buildings", "/tasks", "/plans", "/inspect", "/assets", "/findings", "/reports", "/reports/annual", "/notifications", "/settings",
     "/settings/organizations", "/settings/locations", "/settings/users", "/settings/checklists", "/settings/notifications", "/settings/branding", "/settings/audit"],
-  executive: ["/", "/tasks", "/assets", "/findings", "/reports"],
-  "inspector.sci": ["/", "/inspect", "/tasks", "/findings"],
+  executive: ["/", "/buildings", "/tasks", "/assets", "/findings", "/reports", "/reports/print/buildings"],
+  "inspector.sci": ["/", "/buildings", "/inspect", "/tasks", "/findings"],
   fixer: ["/", "/findings?mine=1&status=open_all", "/notifications"],
 };
 for (const [user, paths] of Object.entries(PAGES)) {

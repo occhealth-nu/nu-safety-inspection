@@ -1,13 +1,15 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import type { Building, Organization } from "@/lib/types";
+import type { Building, Campus, Organization, Zone } from "@/lib/types";
 
 export async function getFilterOptions() {
   const supabase = await createClient();
-  const [orgs, buildings, people] = await Promise.all([
+  const [orgs, buildings, people, campuses, zones] = await Promise.all([
     supabase.from("organizations").select("*").eq("is_active", true).order("code"),
     supabase.from("buildings").select("*").eq("is_active", true).order("name"),
     supabase.from("profiles").select("id, full_name").eq("is_active", true).order("full_name").limit(500),
+    supabase.from("campuses").select("*").eq("is_active", true).order("sort_order").order("name"),
+    supabase.from("zones").select("*").eq("is_active", true).order("sort_order").order("name"),
   ]);
   const list = (orgs.data ?? []) as Organization[];
   // เรียงตามลำดับชั้น
@@ -15,7 +17,10 @@ export async function getFilterOptions() {
   const tree: Organization[] = [];
   const add = (parent: string | null) => sorted.filter((o) => o.parent_id === parent).forEach((o) => { tree.push(o); add(o.id); });
   add(null);
-  return { orgs: tree, buildings: (buildings.data ?? []) as Building[], people: (people.data ?? []) as { id: string; full_name: string }[] };
+  return {
+    orgs: tree, buildings: (buildings.data ?? []) as Building[], people: (people.data ?? []) as { id: string; full_name: string }[],
+    campuses: (campuses.data ?? []) as Campus[], zones: (zones.data ?? []) as Zone[],
+  };
 }
 
 /** สร้าง signed URL อายุจำกัดสำหรับไฟล์ private (สิทธิ์ตรวจด้วย storage policy ในนามผู้ใช้) */
@@ -23,6 +28,17 @@ export async function signedUrls(paths: string[], expiresIn = 600): Promise<Reco
   if (!paths.length) return {};
   const supabase = await createClient();
   const { data } = await supabase.storage.from("attachments").createSignedUrls(paths, expiresIn);
+  const out: Record<string, string> = {};
+  (data ?? []).forEach((d) => { if (d.signedUrl && d.path) out[d.path] = d.signedUrl; });
+  return out;
+}
+
+/** URL ชั่วคราวของภาพผังชั้น (bucket private "floor-plans" — สิทธิ์ตรวจด้วย storage policy ในนามผู้ใช้) */
+export async function floorPlanUrls(paths: (string | null | undefined)[], expiresIn = 1800): Promise<Record<string, string>> {
+  const list = Array.from(new Set(paths.filter((p): p is string => !!p)));
+  if (!list.length) return {};
+  const supabase = await createClient();
+  const { data } = await supabase.storage.from("floor-plans").createSignedUrls(list, expiresIn);
   const out: Record<string, string> = {};
   (data ?? []).forEach((d) => { if (d.signedUrl && d.path) out[d.path] = d.signedUrl; });
   return out;

@@ -15,6 +15,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/tasks", label: "แผนและงานตรวจ", icon: "tasks", mobile: true },
   ];
   if (hasRole(s, INSPECT_ROLES)) nav.push({ href: "/inspect", label: "เริ่มตรวจ / สแกน QR", icon: "scan", mobile: true });
+  nav.push({ href: "/buildings", label: "อาคารและพื้นที่", icon: "buildings" });
   nav.push({ href: "/assets", label: "ทะเบียนจุดตรวจ", icon: "assets", mobile: true });
   nav.push({ href: "/findings", label: "ติดตามแก้ไข", icon: "findings", mobile: true });
   nav.push({ href: "/reports", label: "รายงาน", icon: "reports" });

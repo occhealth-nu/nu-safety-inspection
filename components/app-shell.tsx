@@ -5,12 +5,12 @@ import clsx from "clsx";
 import { Suspense, useState } from "react";
 import { FlashMessage } from "@/components/flash";
 import {
-  Bell, ClipboardCheck, ClipboardList, FileBarChart2, LayoutDashboard, LogOut, Menu, QrCode, Settings, Wrench, X, Boxes,
+  Bell, ClipboardCheck, ClipboardList, FileBarChart2, LayoutDashboard, LogOut, Menu, QrCode, Settings, Wrench, X, Boxes, Building2,
 } from "lucide-react";
 import { OfflineBanner } from "@/components/pwa";
 
 export interface NavItem { href: string; label: string; icon: keyof typeof ICONS; mobile?: boolean }
-const ICONS = { dashboard: LayoutDashboard, tasks: ClipboardList, scan: QrCode, assets: Boxes, findings: Wrench, reports: FileBarChart2, settings: Settings, inspect: ClipboardCheck };
+const ICONS = { dashboard: LayoutDashboard, tasks: ClipboardList, scan: QrCode, assets: Boxes, findings: Wrench, reports: FileBarChart2, settings: Settings, inspect: ClipboardCheck, buildings: Building2 };
 
 export function AppShell({ nav, children, user, unread, brand }: {
   nav: NavItem[]; children: React.ReactNode; unread: number;

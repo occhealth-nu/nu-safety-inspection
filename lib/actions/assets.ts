@@ -4,6 +4,8 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { toActionError, type ActionResult } from "@/lib/errors";
 
+// ตัวเลขที่เว้นว่างได้: "" → null (ป้องกัน z.coerce แปลงช่องว่างเป็น 0 ซึ่งเป็นพิกัด/หมุดที่ผิด)
+const optNum = (s: z.ZodNumber) => z.preprocess((v) => (v === "" || v === undefined || v === null ? null : v), z.coerce.number().pipe(s).nullable());
 const opt = (s: z.ZodTypeAny) => s.optional().or(z.literal("")).transform((v) => (v === "" ? null : v ?? null));
 const schema = z.object({
   code: z.string().trim().min(2, "กรุณาระบุรหัส").max(40).regex(/^[A-Za-z0-9._-]+$/, "รหัสใช้ได้เฉพาะ A-Z 0-9 . _ -"),
@@ -23,7 +25,13 @@ const schema = z.object({
   custom_interval_days: opt(z.coerce.number().int().min(1).max(3650)),
   status: z.enum(["active", "inactive", "relocated", "disposed"]).default("active"),
   notes: opt(z.string().max(2000)),
-});
+  plan_x: optNum(z.number().min(0).max(100)),
+  plan_y: optNum(z.number().min(0).max(100)),
+  latitude: optNum(z.number().min(-90).max(90)),
+  longitude: optNum(z.number().min(-180).max(180)),
+}).refine((v) => (v.plan_x === null) === (v.plan_y === null), "ตำแหน่งบนผังไม่สมบูรณ์ กรุณาปักหมุดใหม่")
+  .refine((v) => v.plan_x === null || v.floor_id !== null, "ต้องเลือกชั้นก่อนปักหมุดบนผัง")
+  .refine((v) => (v.latitude === null) === (v.longitude === null), "กรุณาระบุทั้งละติจูดและลองจิจูด (หรือเว้นว่างทั้งคู่)");
 
 export async function saveAsset(_: unknown, form: FormData): Promise<ActionResult<{ id: string }>> {
   const id = String(form.get("id") ?? "");

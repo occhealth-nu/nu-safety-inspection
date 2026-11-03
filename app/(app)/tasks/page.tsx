@@ -23,6 +23,9 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
   if (sp.to) q = q.lte("due_on", sp.to);
   if (sp.status) q = q.eq("display_status", sp.status);
   if (sp.org) q = q.contains("org_ancestors", [sp.org]);
+  if (sp.campus) q = q.eq("campus_id", sp.campus);
+  if (sp.zone) q = q.eq("zone_id", sp.zone);
+  if (sp.floor) q = q.eq("floor_id", sp.floor);
   if (sp.building) q = q.eq("building_id", sp.building);
   if (sp.category) q = q.eq("category", sp.category);
   if (sp.assignee) q = q.eq("assignee_id", sp.assignee);
@@ -42,7 +45,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
           {canManage && <LinkButton href="/plans" variant="secondary">จัดการแผนการตรวจ</LinkButton>}
           <LinkButton href={"/tasks" + qs({ ...sp, mine: "1", page: undefined })} variant="secondary">เฉพาะงานของฉัน</LinkButton>
         </>} />
-      <FilterBar action="/tasks" values={sp} orgs={options.orgs} buildings={options.buildings} people={options.people} show={["org", "building", "category", "assignee"]} />
+      <FilterBar action="/tasks" values={sp} orgs={options.orgs} buildings={options.buildings} campuses={options.campuses} zones={options.zones} people={options.people} show={["campus", "zone", "building", "org", "category", "assignee"]} />
       <div className="mb-3 flex flex-wrap gap-2" role="tablist" aria-label="สถานะงานตรวจ">
         {statuses.map((st) => (
           <Link key={st} href={"/tasks" + qs({ ...sp, status: st || undefined, page: undefined })} role="tab" aria-selected={(sp.status ?? "") === st}

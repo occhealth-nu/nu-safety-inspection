@@ -63,3 +63,10 @@ export async function createWorkOrder(_: unknown, form: FormData): Promise<Actio
   const wo = data as { id: string; wo_no: string };
   return { ok: true, data: wo, message: `ออกใบงาน ${wo.wo_no} แล้ว (ยังไม่ได้ส่งเข้าระบบภายนอก — พิมพ์/ส่งออกเอกสารเพื่อส่งต่อ)` };
 }
+
+export async function setFindingPin(id: string, x: number | null, y: number | null, note: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_finding_pin", { p_finding_id: id, p_x: x, p_y: y, p_note: note || null });
+  if (error) return toActionError(error, "บันทึกตำแหน่งไม่สำเร็จ");
+  return { ok: true, message: "บันทึกตำแหน่งข้อบกพร่องแล้ว" };
+}

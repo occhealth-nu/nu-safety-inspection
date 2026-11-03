@@ -4,7 +4,7 @@ import { CATEGORY_LABELS, FINDING_STATUS_LABELS, SEVERITY_LABELS, TASK_STATUS_LA
 import { formatDate, formatDateTime, MONTHS_TH_FULL, toBE } from "@/lib/format";
 import type { FindingRow, TaskRow, AssetRow } from "@/lib/types";
 
-export interface ReportFilter { from: string; to: string; org?: string; building?: string; category?: string }
+export interface ReportFilter { from: string; to: string; org?: string; campus?: string; zone?: string; building?: string; category?: string }
 export interface ReportTable { title: string; subtitle: string; columns: string[]; rows: (string | number)[][]; notes?: string[] }
 
 export const REPORT_TYPES: Record<string, { title: string; description: string }> = {
@@ -12,6 +12,7 @@ export const REPORT_TYPES: Record<string, { title: string; description: string }
   monthly: { title: "สรุปรายเดือน", description: "งานถึงกำหนด/ตรวจแล้ว/ความครอบคลุม และข้อบกพร่องพบใหม่/ปิดงาน แยกตามเดือนและหมวด" },
   backlog: { title: "งานค้าง", description: "งานตรวจที่ยังไม่ตรวจ/เกินกำหนด และข้อบกพร่องที่ยังไม่ปิด ณ วันที่ออกรายงาน" },
   assets: { title: "ทะเบียนและประวัติอุปกรณ์", description: "ทะเบียนจุดตรวจ วันตรวจล่าสุด กำหนดตรวจครั้งถัดไป วันหมดอายุ และงานค้าง" },
+  buildings: { title: "สรุปความปลอดภัยรายอาคาร", description: "วิทยาเขต › โซน › อาคาร: ความครอบคลุม งานเกินกำหนด ข้อบกพร่องค้าง/เร่งด่วน จุดตรวจที่ปักหมุดและผังชั้น" },
   corrective: { title: "ผลการแก้ไข", description: "ข้อบกพร่องที่พบในช่วงเวลา สถานะ ผู้รับผิดชอบ กำหนดเสร็จ วันที่ปิดงาน และการส่งกลับ" },
 };
 
@@ -24,6 +25,8 @@ export async function buildReport(type: string, f: ReportFilter): Promise<Report
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let x = q as any;
     if (f.org) x = x.contains("org_ancestors", [f.org]);
+    if (f.campus) x = x.eq("campus_id", f.campus);
+    if (f.zone) x = x.eq("zone_id", f.zone);
     if (f.building) x = x.eq("building_id", f.building);
     if (f.category) x = x.eq("category", f.category);
     return x as T;
@@ -78,6 +81,19 @@ export async function buildReport(type: string, f: ReportFilter): Promise<Report
     ];
     return { title: REPORT_TYPES.backlog.title, subtitle: `ณ วันที่ ${formatDate(today)}`,
       columns: ["ประเภท", "รหัสจุดตรวจ", "รายละเอียด", "หมวด", "อาคาร", "หน่วยงาน", "สถานะ", "ผู้รับผิดชอบ", "ครบกำหนด", "ความเร่งด่วน"], rows };
+  }
+  if (type === "buildings") {
+    const { data, error } = await supabase.rpc("building_safety_overview", { p_from: f.from, p_to: f.to, p_campus: f.campus || null, p_zone: f.zone || null, p_org: f.org || null });
+    if (error) throw error;
+    type B = { building_id: string; building_code: string; building_name: string; campus_name: string | null; zone_name: string | null; floors: number; floors_with_plan: number;
+      assets_active: number; assets_pinned: number; tasks_due: number; tasks_done: number; tasks_overdue: number; findings_open: number; findings_urgent: number; last_inspected_at: string | null };
+    const rows = ((data ?? []) as B[]).filter((b) => !f.building || b.building_id === f.building).map((b) => [
+      b.campus_name ?? "—", b.zone_name ?? "—", b.building_code, b.building_name, b.assets_active, b.assets_pinned, `${b.floors_with_plan}/${b.floors}`,
+      b.tasks_due, b.tasks_done, b.tasks_due ? Math.round((b.tasks_done * 1000) / b.tasks_due) / 10 : "—", b.tasks_overdue, b.findings_open, b.findings_urgent,
+      formatDateTime(b.last_inspected_at, { dateOnly: true })]);
+    return { title: REPORT_TYPES.buildings.title, subtitle: period(f),
+      columns: ["วิทยาเขต", "โซน", "รหัสอาคาร", "อาคาร", "จุดตรวจที่ใช้งาน", "ปักหมุดแล้ว", "ชั้นที่มีผัง/ทั้งหมด", "งานถึงกำหนด", "ตรวจแล้ว", "ความครอบคลุม (%)", "งานเกินกำหนด", "ข้อบกพร่องค้าง", "เร่งด่วนค้าง", "ตรวจล่าสุด"],
+      rows, notes: ["ความครอบคลุม = ตรวจแล้ว ÷ งานที่ถึงกำหนดในช่วงเวลา × 100 · ข้อบกพร่องค้างนับ ณ วันที่ออกรายงาน · ข้อมูลตามสิทธิ์ของผู้ออกรายงาน"] };
   }
   if (type === "assets") {
     const { data, error } = await scope(supabase.from("v_assets").select("*")).order("code").limit(10000);

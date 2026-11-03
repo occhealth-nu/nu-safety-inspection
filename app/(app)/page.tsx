@@ -35,7 +35,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const f = await searchParams;
   const { from, to } = resolvePeriod(f, presetRange);
   const supabase = await createClient();
-  const args = { p_org: f.org || null, p_building: f.building || null, p_category: f.category || null, p_assignee: f.assignee || null };
+  const args = { p_org: f.org || null, p_building: f.building || null, p_category: f.category || null, p_assignee: f.assignee || null,
+    p_campus: f.campus || null, p_zone: f.zone || null, p_floor: null };
   const today = todayBangkok();
   const year = Number(to.slice(0, 4));
   const trendFrom = (() => { const d = new Date(to + "T00:00:00Z"); d.setUTCMonth(d.getUTCMonth() - 11); return d.toISOString().slice(0, 8) + "01"; })();
@@ -58,7 +59,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const annual = (annualRes.data ?? []) as { group_key: string; group_label: string; month: number; due: number; done: number; overdue: number }[];
   const activity = (actRes.data ?? []) as { at: string; kind: string; title: string; detail: string; link: string; actor: string | null }[];
 
-  const base = { org: f.org, building: f.building, category: f.category, assignee: f.assignee };
+  const base = { campus: f.campus, zone: f.zone, org: f.org, building: f.building, category: f.category, assignee: f.assignee };
   const taskLink = (extra: Record<string, string | undefined>) => "/tasks" + qs({ ...base, from, to, ...extra });
   const findingLink = (extra: Record<string, string | undefined>) => "/findings" + qs({ ...base, ...extra });
 
@@ -73,7 +74,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </span>}
         actions={<Link href={"/" + qs({ ...base, preset: f.preset, from: f.from, to: f.to })} className="text-sm text-brand underline" prefetch={false}>รีเฟรชข้อมูล</Link>}
       />
-      <FilterBar values={f} orgs={options.orgs} buildings={options.buildings} people={options.people} />
+      <FilterBar values={f} orgs={options.orgs} buildings={options.buildings} campuses={options.campuses} zones={options.zones} people={options.people}
+        show={["period", "campus", "zone", "building", "org", "category", "assignee"]} />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi label="จุดตรวจ/อุปกรณ์ที่ใช้งานอยู่" value={formatNumber(k.assets_active)} icon={<Boxes className="h-5 w-5" />}

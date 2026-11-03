@@ -6,6 +6,7 @@ import { signedUrls } from "@/lib/queries";
 import { qrSvg, qrUrl } from "@/lib/qr";
 import { appBaseUrl } from "@/lib/origin";
 import { AssetPhotos } from "@/components/asset-photo";
+import { AssetLocationCard } from "@/components/location/asset-location-card";
 import { Badge, Card, LinkButton, NoAccess, Notice, PageHeader, Table, Td, Th } from "@/components/ui";
 import { ASSET_STATUS_LABELS, CATEGORY_LABELS, FINDING_STATUS_LABELS, FINDING_TONE, FREQUENCY_LABELS, SEVERITY_LABELS, SEVERITY_TONE, TASK_STATUS_LABELS, TASK_TONE } from "@/lib/labels";
 import { formatDate, formatDateTime, formatPct, todayBangkok } from "@/lib/format";
@@ -64,6 +65,7 @@ export default async function AssetDetail({ params, searchParams }: { params: Pr
           <div className="mt-4"><p className="mb-1 text-sm font-medium">รูปภาพ</p>
             <AssetPhotos assetId={a.id} canEdit={canEdit} initial={(photos.data ?? []).map((p) => ({ id: p.id, path: p.storage_path, url: urls[p.storage_path] ?? null }))} /></div>
         </Card>
+        <div className="space-y-4">
         <Card title="QR Code">
           <div className="flex flex-col items-center text-center">
             <div className="rounded-lg border border-gray-200 bg-white p-2" dangerouslySetInnerHTML={{ __html: svg }} />
@@ -73,6 +75,8 @@ export default async function AssetDetail({ params, searchParams }: { params: Pr
             <p className="mt-2 text-xs text-gray-500">QR ใช้รหัสอ้างอิงถาวร ไม่มีข้อมูลส่วนบุคคล ผู้สแกนต้องเข้าสู่ระบบและมีสิทธิ์ก่อนจึงเห็นรายละเอียด</p>
           </div>
         </Card>
+          <AssetLocationCard asset={a} />
+        </div>
       </div>
 
       <Card className="mt-4" title="งานตรวจที่ยังเปิดอยู่">

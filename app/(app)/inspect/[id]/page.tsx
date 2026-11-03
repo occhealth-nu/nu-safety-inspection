@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth";
 import { signedUrls } from "@/lib/queries";
+import { getAppSettings } from "@/lib/settings";
 import { NoAccess, PageHeader, ExpertDraftBadge } from "@/components/ui";
 import { InspectionForm } from "@/components/inspection-form";
 import { CATEGORY_LABELS } from "@/lib/labels";
@@ -47,6 +48,7 @@ export default async function InspectPage({ params }: { params: Promise<{ id: st
         initial={(responses.data ?? []).map((r) => ({ item_id: r.item_id, result: r.result, note: r.note, na_reason: r.na_reason, urgency: r.urgency, photo_exempt_reason: r.photo_exempt_reason }))}
         initialSummary={insp.summary_note ?? ""}
         initialPhotos={photos}
+        geoEnabled={(await getAppSettings()).geo_capture_enabled}
       />
     </>
   );

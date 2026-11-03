@@ -5,11 +5,13 @@ import { createClient } from "@/lib/supabase/server";
 export interface AppSettings {
   app_name: string; university_name_th: string; university_name_en: string;
   primary_color: string; dark_color: string; logo_url: string | null; sso_note: string | null; allowed_email_domains: string[];
+  geo_capture_enabled: boolean; geo_radius_m: number;
 }
 
 const DEFAULTS: AppSettings = {
   app_name: "NU Safety Inspection", university_name_th: "มหาวิทยาลัยนเรศวร", university_name_en: "Naresuan University",
   primary_color: "#F26F21", dark_color: "#2F3337", logo_url: null, sso_note: null, allowed_email_domains: ["nu.ac.th"],
+  geo_capture_enabled: true, geo_radius_m: 300,
 };
 
 export const getAppSettings = cache(async (): Promise<AppSettings> => {

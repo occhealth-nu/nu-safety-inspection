@@ -30,13 +30,14 @@ const FORM_ACTIONS: Record<string, FormFn> = {
   saveNotificationSettings: admin.saveNotificationSettings, saveBranding: admin.saveBranding,
   saveItem: checklists.saveItem, saveVersionMeta: checklists.saveVersionMeta, createTemplate: checklists.createTemplate,
   saveAsset: assets.saveAsset, changePassword: account.changePassword,
+  saveCampus: admin.saveCampus, createZone: admin.createZone, saveBuildingLocation: admin.saveBuildingLocation, saveGeoSettings: admin.saveGeoSettings,
 };
 const ARG_ACTIONS: Record<string, ArgFn> = {
   startWork: findings.startWork, saveInspectionDraft: inspection.saveInspectionDraft, submitInspection: inspection.submitInspection,
   generateTasks: plans.generateTasks, togglePlan: plans.togglePlan, cancelTask: plans.cancelTask,
   toggleOrganization: admin.toggleOrganization, revokeRole: admin.revokeRole, setUserActive: admin.setUserActive,
   newVersion: checklists.newVersion, publishVersion: checklists.publishVersion, deleteItem: checklists.deleteItem,
-  markAllRead: notifications.markAllRead,
+  markAllRead: notifications.markAllRead, clearFloorPlan: admin.clearFloorPlan, setFindingPin: findings.setFindingPin,
 };
 export type ActionName = keyof typeof FORM_ACTIONS | keyof typeof ARG_ACTIONS;
 

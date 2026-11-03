@@ -3,7 +3,10 @@ import clsx from "clsx";
 import { Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession, hasRole, MANAGER_ROLES } from "@/lib/auth";
-import { signedUrls } from "@/lib/queries";
+import { floorPlanUrls, signedUrls } from "@/lib/queries";
+import { FloorPlan } from "@/components/location/floor-plan";
+import { FindingPinEditor } from "@/components/location/finding-pin-editor";
+import { assetPinTone, scopePath } from "@/lib/location";
 import { AssignPanel, AssigneePanel, VerifyPanel, WorkOrderPanel } from "@/components/finding-actions";
 import { Badge, Card, LinkButton, NoAccess, Notice, PageHeader } from "@/components/ui";
 import { ACTION_LABELS, CATEGORY_LABELS, FINDING_FLOW, FINDING_FLOW_SHORT, FINDING_STATUS_LABELS, FINDING_TONE, SEVERITY_LABELS, SEVERITY_TONE } from "@/lib/labels";
@@ -25,7 +28,7 @@ export default async function FindingDetail({ params }: { params: Promise<{ id: 
   const supabase = await createClient();
   const { data: f } = await supabase.from("v_findings").select("*").eq("id", id).maybeSingle<FindingRow & { org_ancestors: string[] }>();
   if (!f) return <NoAccess message="ไม่พบรายการ หรือรายการนี้อยู่นอกขอบเขตสิทธิ์ของคุณ" />;
-  const [actions, before, after, wos, responsible, response, prev] = await Promise.all([
+  const [actions, before, after, wos, responsible, response, prev, insp, floorRow] = await Promise.all([
     supabase.from("corrective_actions").select("*, profiles:actor_id(full_name)").eq("finding_id", id).order("created_at"),
     supabase.from("attachments").select("id, storage_path").eq("entity_type", "inspection").eq("entity_id", f.inspection_id).eq("item_id", f.checklist_item_id),
     supabase.from("attachments").select("id, storage_path, kind, created_at").eq("entity_type", "finding").eq("entity_id", id).order("created_at"),
@@ -33,12 +36,20 @@ export default async function FindingDetail({ params }: { params: Promise<{ id: 
     supabase.from("role_assignments").select("user_id, organization_id, profiles:user_id(full_name, is_active), organizations(name_th)").eq("role", "responsible"),
     supabase.from("inspection_responses").select("photo_exempt_reason").eq("id", f.response_id).maybeSingle(),
     f.recurrence_of ? supabase.from("findings").select("id, finding_no, created_at").eq("id", f.recurrence_of).maybeSingle() : Promise.resolve({ data: null }),
+    supabase.from("inspections").select("inspector_id").eq("id", f.inspection_id).maybeSingle(),
+    f.floor_id ? supabase.from("floors").select("plan_path, name").eq("id", f.floor_id).maybeSingle() : Promise.resolve({ data: null }),
   ]);
+  const planPath = (floorRow.data as { plan_path: string | null } | null)?.plan_path ?? null;
+  const planUrl = planPath ? (await floorPlanUrls([planPath]))[planPath] ?? null : null;
   const urls = await signedUrls([...(before.data ?? []), ...(after.data ?? [])].map((a) => a.storage_path));
   const me = s.profile?.id;
   const canManage = hasRole(s, MANAGER_ROLES, f.organization_id, f.org_ancestors);
   const canVerify = hasRole(s, ["verifier", "safety_coordinator", "system_admin"], f.organization_id, f.org_ancestors) && me !== f.assignee_id && me !== f.fix_submitted_by;
   const isAssignee = me === f.assignee_id;
+  const canPin = f.status !== "closed" && !!f.floor_id && (canManage || isAssignee || (insp.data as { inspector_id: string } | null)?.inspector_id === me);
+  const assetPin = f.asset_plan_x != null && f.asset_plan_y != null
+    ? { id: "asset", x: Number(f.asset_plan_x), y: Number(f.asset_plan_y), tone: assetPinTone({ status: "active" }), label: `จุดตรวจ ${f.asset_code}`, glyph: "◇" } : null;
+  const findingPin = f.plan_x != null && f.plan_y != null ? { x: Number(f.plan_x), y: Number(f.plan_y) } : null;
   const idx = FINDING_FLOW.indexOf(f.status);
   type Resp = { user_id: string; profiles: { full_name: string; is_active: boolean } | null; organizations: { name_th: string } | null };
   const respOpts = Array.from(new Map(((responsible.data ?? []) as unknown as Resp[]).filter((r) => r.profiles?.is_active)
@@ -81,6 +92,21 @@ export default async function FindingDetail({ params }: { params: Promise<{ id: 
               {f.closed_at && <div><dt className="inline text-gray-500">ปิดงานเมื่อ: </dt><dd className="inline">{formatDateTime(f.closed_at)}</dd></div>}
             </dl>
             {f.initial_measure && <div className="mt-3"><Notice tone="warning"><b>มาตรการเบื้องต้น:</b> {f.initial_measure}</Notice></div>}
+          </Card>
+          <Card title="ตำแหน่งข้อบกพร่อง" actions={<Link href={`/buildings/${f.building_id}?floor=${f.floor_id ?? ""}`} className="text-sm text-brand underline">ดูในผังอาคาร</Link>}>
+            <p className="mb-2 text-sm text-gray-700">{scopePath([f.building_name, f.floor_name, f.location_name])}{f.location_detail ? ` — ${f.location_detail}` : ""}
+              {f.location_note && <span className="block text-gray-600">จุดที่พบ: {f.location_note}</span>}</p>
+            {!f.floor_id ? <p className="text-sm text-gray-500">จุดตรวจนี้ยังไม่ระบุชั้น จึงยังแสดงผังไม่ได้</p>
+              : canPin ? (
+                <details open={!findingPin}><summary className="mb-2 cursor-pointer text-sm font-medium text-brand">ปักหมุด/แก้ไขตำแหน่งที่พบจริงบนผัง</summary>
+                  <div className="max-w-2xl"><FindingPinEditor findingId={f.id} planUrl={planUrl} value={findingPin} note={f.location_note} assetPin={assetPin} /></div>
+                </details>
+              ) : null}
+            {f.floor_id && (!canPin || findingPin) && (
+              <div className="mt-2 max-w-2xl"><FloorPlan planUrl={planUrl}
+                pins={[...(assetPin ? [assetPin] : []), ...(findingPin ? [{ id: f.id, ...findingPin, tone: "finding" as const, label: `${f.finding_no} ${f.title}`, highlight: true }] : [])]}
+                caption="✕ = ตำแหน่งข้อบกพร่อง · ◇ = ตำแหน่งจุดตรวจ" /></div>
+            )}
           </Card>
           <Card title="หลักฐานก่อน–หลังแก้ไข">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

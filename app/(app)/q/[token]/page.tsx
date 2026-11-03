@@ -6,6 +6,7 @@ import { Badge, Card, LinkButton, NoAccess, PageHeader, Notice } from "@/compone
 import { ASSET_STATUS_LABELS, CATEGORY_LABELS, FINDING_STATUS_LABELS, FINDING_TONE, TASK_STATUS_LABELS, TASK_TONE } from "@/lib/labels";
 import { formatDate, formatDateTime, todayBangkok } from "@/lib/format";
 import type { AssetRow, FindingRow, TaskRow } from "@/lib/types";
+import { AssetLocationCard } from "@/components/location/asset-location-card";
 
 export const metadata = { title: "ข้อมูลจุดตรวจ" };
 
@@ -48,6 +49,7 @@ export default async function QrLanding({ params }: { params: Promise<{ token: s
           </div>
         </Card>
         <div className="space-y-4">
+          <AssetLocationCard asset={asset} compact />
           <Card title="งานตรวจที่ถึงรอบ">
             {openTask ? (
               <p className="text-sm"><Badge tone={TASK_TONE[openTask.display_status]}>{TASK_STATUS_LABELS[openTask.display_status]}</Badge> ครบกำหนด {formatDate(openTask.due_on)} · ผู้ตรวจ {openTask.assignee_name ?? "ยังไม่มอบหมาย"}</p>

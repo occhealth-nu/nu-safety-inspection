@@ -21,9 +21,20 @@ const RESULT_BTN: { v: ItemResult; label: string; icon: typeof Check; on: string
 
 function localKey(id: string) { return `nu-insp-draft:${id}`; }
 
-export function InspectionForm({ inspectionId, items, initial, initialSummary, initialPhotos }: {
+/** ขอพิกัดครั้งเดียวขณะส่งผล (รอสูงสุด 8 วินาที) — ไม่ได้รับอนุญาต/หาไม่ได้ก็ยังส่งผลตรวจได้ */
+function captureLocation(): Promise<{ lat: number | null; lng: number | null; accuracy: number | null; status?: "denied" | "unavailable" }> {
+  return new Promise((resolve) => {
+    if (typeof navigator === "undefined" || !("geolocation" in navigator)) { resolve({ lat: null, lng: null, accuracy: null, status: "unavailable" }); return; }
+    navigator.geolocation.getCurrentPosition(
+      (p) => resolve({ lat: Number(p.coords.latitude.toFixed(6)), lng: Number(p.coords.longitude.toFixed(6)), accuracy: Math.round(p.coords.accuracy * 10) / 10 }),
+      (e) => resolve({ lat: null, lng: null, accuracy: null, status: e.code === 1 ? "denied" : "unavailable" }),
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
+  });
+}
+
+export function InspectionForm({ inspectionId, items, initial, initialSummary, initialPhotos, geoEnabled = false }: {
   inspectionId: string; items: ChecklistItem[]; initial: Resp[]; initialSummary: string;
-  initialPhotos: Record<string, UploadedPhoto[]>;
+  initialPhotos: Record<string, UploadedPhoto[]>; geoEnabled?: boolean;
 }) {
   const online = useOnline();
   const [resp, setResp] = useState<Record<string, Resp>>(() => {
@@ -144,9 +155,14 @@ export function InspectionForm({ inspectionId, items, initial, initialSummary, i
     }
     if (!navigator.onLine) { setStatus({ tone: "warning", text: "ไม่มีเครือข่าย — ยังไม่ได้ส่งผลตรวจ ข้อมูลถูกเก็บเป็นฉบับร่างในเครื่องนี้ กรุณาส่งอีกครั้งเมื่อเชื่อมต่อแล้ว" }); return; }
     submitLock.current = true; setSubmitting(true);
-    setStatus({ tone: "info", text: "กำลังส่งผลตรวจ… กรุณารอการยืนยันจากระบบ" });
     try {
-      const r = await callAction<{ findings: { id: string }[] }>("submitInspection", [inspectionId, payload(), summary, clientSubmissionId]);
+      let geo = null;
+      if (geoEnabled) {
+        setStatus({ tone: "info", text: "กำลังบันทึกตำแหน่งยืนยันการตรวจหน้างาน…" });
+        geo = await captureLocation();
+      }
+      setStatus({ tone: "info", text: "กำลังส่งผลตรวจ… กรุณารอการยืนยันจากระบบ" });
+      const r = await callAction<{ findings: { id: string }[] }>("submitInspection", [inspectionId, payload(), summary, clientSubmissionId, geo]);
       if (r.code === "NETWORK") throw new Error("network");
       if (r.ok) {
         localStorage.removeItem(localKey(inspectionId));
@@ -170,6 +186,7 @@ export function InspectionForm({ inspectionId, items, initial, initialSummary, i
   return (
     <div className="mx-auto max-w-3xl pb-32">
       {localRestored && <div className="mb-3"><Notice tone="info">กู้คืนข้อมูลที่กรอกค้างไว้ในเครื่องนี้แล้ว — ข้อมูลยังไม่ถูกส่ง</Notice></div>}
+      {geoEnabled && <p className="mb-3 text-xs text-gray-600">ขณะกด “ส่งผลตรวจ” ระบบจะขอพิกัดตำแหน่งของเครื่องหนึ่งครั้ง เพื่อยืนยันว่าตรวจที่หน้างาน (ปฏิเสธได้ ผลตรวจยังส่งได้ตามปกติ)</p>}
       <ol className="space-y-3">
         {items.map((it) => {
           const r = resp[it.id];

@@ -6,6 +6,7 @@ import { Badge, Card, ExpertDraftBadge, LinkButton, NoAccess, Notice, PageHeader
 import { RESULT_LABELS, RESULT_TONE, SEVERITY_LABELS, SEVERITY_TONE, FINDING_STATUS_LABELS, FINDING_TONE } from "@/lib/labels";
 import { formatDateTime, formatPct } from "@/lib/format";
 import type { LegalReference } from "@/lib/types";
+import { formatDistance, GEO_STATUS_LABELS, mapsUrl } from "@/lib/location";
 
 export const metadata = { title: "ผลการตรวจ" };
 
@@ -45,6 +46,14 @@ export default async function InspectionView({ params, searchParams }: { params:
             <dt className="text-gray-500">ผ่าน/ไม่ผ่าน/ไม่เกี่ยวข้อง</dt><dd>{i.pass_count}/{i.fail_count}/{i.na_count}</dd>
             <dt className="text-gray-500">คะแนน</dt><dd>{formatPct(i.score_pct)} <span className="text-xs text-gray-500">(ไม่นับข้อไม่เกี่ยวข้อง)</span></dd>
             <dt className="text-gray-500">แบบตรวจ</dt><dd>{i.template_name} เวอร์ชัน {i.version_no}</dd>
+            {i.geo_status && (<>
+              <dt className="text-gray-500">ตำแหน่งขณะส่งผล</dt>
+              <dd data-testid="geo-status">
+                <Badge tone={i.geo_status === "ok" ? "good" : i.geo_status === "far" ? "serious" : "neutral"}>{GEO_STATUS_LABELS[i.geo_status] ?? i.geo_status}</Badge>
+                {i.geo_distance_m != null && <span className="block text-xs text-gray-600">ห่างจากจุดตรวจ/อาคาร {formatDistance(i.geo_distance_m)}{i.geo_accuracy_m != null ? ` (GPS ±${Math.round(i.geo_accuracy_m)} ม.)` : ""}</span>}
+                {mapsUrl(i.geo_lat, i.geo_lng) && <a href={mapsUrl(i.geo_lat, i.geo_lng)!} target="_blank" rel="noreferrer" className="block text-xs text-brand underline">ดูตำแหน่งบนแผนที่</a>}
+              </dd>
+            </>)}
           </dl>
           {i.summary_note && <p className="mt-3 rounded-lg bg-gray-50 p-2 text-sm">{i.summary_note}</p>}
           <div className="mt-3 space-y-1 text-xs text-gray-600">

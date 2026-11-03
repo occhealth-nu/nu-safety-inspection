@@ -29,8 +29,11 @@ export async function toggleOrganization(id: string, active: boolean): Promise<A
 // ---------- อาคาร / ชั้น / ห้อง ----------
 export async function createBuilding(_: unknown, form: FormData): Promise<ActionResult> {
   const supabase = await createClient();
+  const ll = latLng(form); if (typeof ll === "string") return { ok: false, message: ll };
+  const zone = s(form.get("zone_id")) || null;
   const { data, error } = await supabase.from("buildings").insert({
     organization_id: s(form.get("organization_id")), code: s(form.get("code")).toUpperCase(), name: s(form.get("name")), description: s(form.get("description")) || null,
+    campus_id: zone ? null : (s(form.get("campus_id")) || null), zone_id: zone, address: s(form.get("address")) || null, ...ll,
   }).select("id").single();
   if (error) return toActionError(error, "เพิ่มอาคารไม่สำเร็จ");
   const floors = Number(form.get("floors") || 0);
@@ -54,6 +57,70 @@ export async function createLocation(_: unknown, form: FormData): Promise<Action
   });
   if (error) return toActionError(error, "เพิ่มห้อง/พื้นที่ไม่สำเร็จ");
   return { ok: true, message: "เพิ่มห้อง/พื้นที่แล้ว" };
+}
+
+// ---------- วิทยาเขต / โซน / ตำแหน่งอาคาร ----------
+const num = (v: FormDataEntryValue | null) => { const t = s(v); return t === "" ? null : Number(t); };
+function latLng(form: FormData): { latitude: number | null; longitude: number | null } | string {
+  const latitude = num(form.get("latitude")), longitude = num(form.get("longitude"));
+  if ((latitude === null) !== (longitude === null)) return "กรุณาระบุทั้งละติจูดและลองจิจูด (หรือเว้นว่างทั้งคู่)";
+  if (latitude !== null && (!Number.isFinite(latitude) || Math.abs(latitude) > 90 || !Number.isFinite(longitude!) || Math.abs(longitude!) > 180))
+    return "พิกัดไม่ถูกต้อง (ละติจูด −90 ถึง 90, ลองจิจูด −180 ถึง 180)";
+  return { latitude, longitude };
+}
+
+export async function saveCampus(_: unknown, form: FormData): Promise<ActionResult> {
+  const ll = latLng(form); if (typeof ll === "string") return { ok: false, message: ll };
+  const id = s(form.get("id"));
+  const row = { code: s(form.get("code")).toUpperCase(), name: s(form.get("name")), address: s(form.get("address")) || null, ...ll };
+  if (!row.code || !row.name) return { ok: false, message: "กรุณาระบุรหัสและชื่อวิทยาเขต" };
+  const supabase = await createClient();
+  const { data, error } = id ? await supabase.from("campuses").update(row).eq("id", id).select("id")
+    : await supabase.from("campuses").insert(row).select("id");
+  if (error) return toActionError(error, "บันทึกวิทยาเขตไม่สำเร็จ (เฉพาะผู้ดูแลระบบ/ผู้ประสานงานส่วนกลาง)");
+  if (!data?.length) return { ok: false, message: "ไม่มีสิทธิ์แก้ไข (เฉพาะผู้ดูแลระบบ/ผู้ประสานงานส่วนกลาง)" };
+  return { ok: true, message: id ? "บันทึกวิทยาเขตแล้ว" : "เพิ่มวิทยาเขตแล้ว" };
+}
+
+export async function createZone(_: unknown, form: FormData): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("zones").insert({
+    campus_id: s(form.get("campus_id")), code: s(form.get("code")).toUpperCase(), name: s(form.get("name")), description: s(form.get("description")) || null,
+  });
+  if (error) return toActionError(error, "เพิ่มโซนไม่สำเร็จ (เฉพาะผู้ดูแลระบบ/ผู้ประสานงานส่วนกลาง)");
+  return { ok: true, message: "เพิ่มโซนแล้ว" };
+}
+
+export async function saveBuildingLocation(_: unknown, form: FormData): Promise<ActionResult> {
+  const ll = latLng(form); if (typeof ll === "string") return { ok: false, message: ll };
+  const supabase = await createClient();
+  const zone = s(form.get("zone_id")) || null;
+  const { data, error } = await supabase.from("buildings").update({
+    name: s(form.get("name")) || undefined, campus_id: zone ? undefined : (s(form.get("campus_id")) || null), zone_id: zone,
+    address: s(form.get("address")) || null, ...ll,
+  }).eq("id", s(form.get("id"))).select("id");
+  if (error) return toActionError(error, "บันทึกข้อมูลอาคารไม่สำเร็จ");
+  if (!data?.length) return { ok: false, message: "ไม่มีสิทธิ์แก้ไขอาคารนี้" };
+  return { ok: true, message: "บันทึกตำแหน่งอาคารแล้ว" };
+}
+
+export async function clearFloorPlan(floorId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_floor_plan", { p_floor_id: floorId, p_path: null });
+  if (error) return toActionError(error);
+  return { ok: true, message: "นำผังชั้นออกแล้ว" };
+}
+
+export async function saveGeoSettings(_: unknown, form: FormData): Promise<ActionResult> {
+  const radius = Number(form.get("geo_radius_m"));
+  if (!Number.isInteger(radius) || radius < 20 || radius > 5000) return { ok: false, message: "รัศมีต้องเป็นจำนวนเต็ม 20–5,000 เมตร" };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("app_settings").update({
+    geo_capture_enabled: form.get("geo_capture_enabled") === "on", geo_radius_m: radius, updated_at: new Date().toISOString(),
+  }).eq("id", 1).select("id");
+  if (error) return toActionError(error);
+  if (!data?.length) return { ok: false, message: "ไม่มีสิทธิ์แก้ไข (เฉพาะผู้ดูแลระบบมหาวิทยาลัย)" };
+  return { ok: true, message: "บันทึกการตั้งค่าตำแหน่งแล้ว" };
 }
 
 // ---------- ผู้ใช้และสิทธิ์ ----------

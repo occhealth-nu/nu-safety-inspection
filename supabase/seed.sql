@@ -30,6 +30,19 @@ select f.id, x.name, b.code || '-' || f.level || x.suffix, x.kind
   cross join (values ('โถงบันได', '00', 'common'), ('ทางเดินหลัก', '01', 'common'),
                      ('ห้องปฏิบัติการ', '05', 'laboratory'), ('ห้องควบคุมไฟฟ้า', '09', 'electrical')) x(name, suffix, kind);
 
+-- ---------- วิทยาเขต / โซน / พิกัดอาคาร (ตัวอย่าง — พิกัดเป็นค่าประมาณเพื่อการสาธิต) ----------
+insert into public.campuses (id, code, name, address, latitude, longitude, sort_order) values
+  ('21000000-0000-0000-0000-000000000001', 'PLK', 'วิทยาเขตหลัก พิษณุโลก (ตัวอย่าง)', 'ต.ท่าโพธิ์ อ.เมือง จ.พิษณุโลก (ข้อมูลตัวอย่าง)', 16.746900, 100.195000, 1);
+insert into public.zones (id, campus_id, code, name, sort_order) values
+  ('22000000-0000-0000-0000-000000000001', '21000000-0000-0000-0000-000000000001', 'Z-ENG', 'โซนวิศวกรรมและวิทยาศาสตร์ (ตัวอย่าง)', 1),
+  ('22000000-0000-0000-0000-000000000002', '21000000-0000-0000-0000-000000000001', 'Z-ADM', 'โซนสำนักงานกลาง (ตัวอย่าง)', 2);
+update public.buildings set zone_id = '22000000-0000-0000-0000-000000000001', latitude = 16.745300, longitude = 100.197400,
+       address = 'ข้อมูลตัวอย่าง' where code = 'EN1';
+update public.buildings set zone_id = '22000000-0000-0000-0000-000000000001', latitude = 16.747700, longitude = 100.196100,
+       address = 'ข้อมูลตัวอย่าง' where code = 'SC2';
+update public.buildings set zone_id = '22000000-0000-0000-0000-000000000002', latitude = 16.748900, longitude = 100.192800,
+       address = 'ข้อมูลตัวอย่าง' where code = 'QS';
+
 -- ---------- แบบตรวจ (ร่างสำหรับผู้เชี่ยวชาญตรวจรับรอง) ----------
 insert into public.checklist_templates (id, code, name, category, description) values
   ('40000000-0000-0000-0000-000000000001', 'CL-FE',  'ถังดับเพลิง', 'fire_extinguisher', 'ร่างสำหรับผู้เชี่ยวชาญตรวจรับรอง'),
@@ -131,6 +144,16 @@ select format('%s-%s-%s%s', at.code, b.code, f.level, lpad(n::text, 2, '0')),
   cross join generate_series(1, case when at.code = 'FE' then 2 else 1 end) n
  where (at.code in ('FE','EL','EX')) or (at.code in ('EE','SP') and f.level = 1)
     or (at.code in ('FH','FA') and f.level = 1 and b.code <> 'QS') or (at.code = 'LAB' and b.code = 'SC2' and f.level <= 2);
+
+-- หมุดบนผังชั้น (ร้อยละของภาพ) จัดตามห้อง/พื้นที่ของแต่ละจุด — ผังตัวอย่าง: โถงบันได (ซ้าย) ทางเดิน (กลาง)
+-- ห้องปฏิบัติการ (ขวาบน) ห้องควบคุมไฟฟ้า (ซ้ายล่าง)
+update public.assets a
+   set plan_x = least(95, x.bx + 7 * (row_number_offset % 4)), plan_y = least(95, x.by + 9 * (row_number_offset / 4))
+  from (select a2.id, (row_number() over (partition by a2.location_id order by a2.code) - 1)::int as row_number_offset,
+               case l.name when 'โถงบันได' then 8 when 'ทางเดินหลัก' then 34 when 'ห้องปฏิบัติการ' then 66 else 10 end as bx,
+               case l.name when 'โถงบันได' then 18 when 'ทางเดินหลัก' then 48 when 'ห้องปฏิบัติการ' then 18 else 72 end as by
+          from public.assets a2 join public.locations l on l.id = a2.location_id) x
+ where x.id = a.id;
 
 -- ---------- แผนการตรวจ (ตัวอย่าง) ----------
 insert into public.inspection_plans (id, name, organization_id, building_id, asset_type_id, template_id, frequency, start_on, due_within_days) values

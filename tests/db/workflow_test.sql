@@ -478,4 +478,104 @@ select test.ok((select count(*) from public.assets) = 0 and (select count(*) fro
 select test.ok(public.email_domain_allowed('a@NU.AC.TH') and not public.email_domain_allowed('a@nu.ac.th.evil.com'), 'ตรวจโดเมนแบบตรงตัว ไม่สนตัวพิมพ์');
 reset role;
 
+-- =====================================================================
+\echo '--- 12. ระบบตรวจสอบความปลอดภัยอาคาร: สโคปพื้นที่ ผังชั้น หมุด และพิกัดผู้ตรวจ'
+-- =====================================================================
+reset role;
+insert into public.floors (id, building_id, name, level) values
+  ('c1000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 'ชั้น 1', 1);
+update public.assets set floor_id = 'c1000000-0000-0000-0000-000000000001', plan_x = 40, plan_y = 60
+ where id in ('d0000000-0000-0000-0000-0000000000a1', 'd0000000-0000-0000-0000-0000000000b1');
+set role authenticated;
+
+select test.login('b0000000-0000-0000-0000-000000000002');  -- ผู้ตรวจ A
+select test.throws($$insert into public.campuses (code, name) values ('X', 'วิทยาเขตปลอม')$$, '42501',
+                   'ผู้ตรวจเพิ่มวิทยาเขตไม่ได้ (เฉพาะส่วนกลาง)');
+select test.login('b0000000-0000-0000-0000-000000000009');  -- ผู้ประสานงานส่วนกลาง
+insert into public.campuses (id, code, name) values
+  ('c2000000-0000-0000-0000-000000000001', 'TC1', 'วิทยาเขตทดสอบ 1'), ('c2000000-0000-0000-0000-000000000002', 'TC2', 'วิทยาเขตทดสอบ 2');
+insert into public.zones (id, campus_id, code, name) values
+  ('c3000000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-000000000001', 'Z1', 'โซนทดสอบ 1'),
+  ('c3000000-0000-0000-0000-000000000002', 'c2000000-0000-0000-0000-000000000001', 'Z2', 'โซนทดสอบ 2 (ไม่มีอาคาร)');
+select test.ok((select count(*) from public.zones where code like 'Z_') = 2, 'ส่วนกลางเพิ่มวิทยาเขตและโซนได้');
+update public.buildings set zone_id = 'c3000000-0000-0000-0000-000000000001', latitude = 16.745000, longitude = 100.197000
+ where id = 'c0000000-0000-0000-0000-000000000001';
+select test.ok((select campus_id from public.buildings where id = 'c0000000-0000-0000-0000-000000000001') = 'c2000000-0000-0000-0000-000000000001',
+               'ระบุโซนแล้ว ระบบเติมวิทยาเขตของอาคารให้อัตโนมัติ');
+select test.throws($$update public.buildings set campus_id = 'c2000000-0000-0000-0000-000000000002' where id = 'c0000000-0000-0000-0000-000000000001'$$,
+                   'P0001', 'อาคารอยู่ในโซนของวิทยาเขตหนึ่ง แต่ระบุวิทยาเขตอื่นไม่ได้');
+select test.throws($$update public.assets set plan_x = 10, plan_y = null where id = 'd0000000-0000-0000-0000-0000000000a1'$$,
+                   '23514', 'หมุดบนผังต้องมีทั้ง X และ Y');
+select test.throws($$update public.assets set plan_x = 120, plan_y = 10 where id = 'd0000000-0000-0000-0000-0000000000a1'$$,
+                   '23514', 'หมุดต้องอยู่ในช่วง 0–100%');
+
+-- ผังชั้น (storage bucket floor-plans)
+select test.login('b0000000-0000-0000-0000-000000000001');  -- ผู้ดูแลหน่วย A (ไม่ใช่เจ้าของอาคาร TB ซึ่งเป็นของ TST)
+select test.throws($$insert into storage.objects (bucket_id, name, owner_id) values ('floor-plans', 'floor/c1000000-0000-0000-0000-000000000001/x.png', auth.uid()::text)$$,
+                   '42501', 'ผู้ดูแลหน่วยย่อยอัปโหลดผังชั้นของอาคารที่ไม่ได้ดูแลไม่ได้');
+select test.throws($$select public.set_floor_plan('c1000000-0000-0000-0000-000000000001', 'floor/c1000000-0000-0000-0000-000000000001/x.png')$$,
+                   'FORBIDDEN', 'ผู้ดูแลหน่วยย่อยตั้งผังชั้นอาคารที่ไม่ได้ดูแลไม่ได้');
+select test.login('b0000000-0000-0000-0000-000000000009');
+insert into storage.objects (bucket_id, name, owner_id) values ('floor-plans', 'floor/c1000000-0000-0000-0000-000000000001/plan.png', auth.uid()::text);
+select test.throws($$select public.set_floor_plan('c1000000-0000-0000-0000-000000000001', 'floor/c1000000-0000-0000-0000-000000000099/plan.png')$$,
+                   'INVALID_INPUT', 'ไฟล์ผังต้องอยู่ในโฟลเดอร์ของชั้นนั้น');
+select public.set_floor_plan('c1000000-0000-0000-0000-000000000001', 'floor/c1000000-0000-0000-0000-000000000001/plan.png');
+select test.ok((select plan_path from public.floors where id = 'c1000000-0000-0000-0000-000000000001') like 'floor/%/plan.png', 'ส่วนกลางตั้งผังชั้นได้');
+select test.login('b0000000-0000-0000-0000-000000000003');  -- ผู้ตรวจ B มีจุดตรวจในอาคาร TB
+select test.ok((select count(*) from storage.objects where bucket_id = 'floor-plans') = 1, 'ผู้ตรวจที่มีจุดตรวจในอาคารเปิดดูผังชั้นได้');
+select test.login('b0000000-0000-0000-0000-000000000008');  -- ไม่มีบทบาท
+select test.ok((select count(*) from storage.objects where bucket_id = 'floor-plans') = 0, 'ผู้ไม่มีสิทธิ์ในอาคารเปิดผังชั้นไม่ได้');
+
+-- พิกัดผู้ตรวจขณะส่งผล
+select test.login('b0000000-0000-0000-0000-000000000002');
+insert into ctx values ('insp_geo', public.start_inspection('d0000000-0000-0000-0000-0000000000a1'));
+select test.ok((public.record_inspection_location((select v from ctx where k = 'insp_geo'), 16.745300, 100.197200, 15) ->> 'status') = 'ok',
+               'ส่งผลห่างจากอาคาร ~40 ม. → อยู่ในพื้นที่ (ok)');
+select test.ok((select geo_distance_m between 30 and 50 from public.inspections where id = (select v from ctx where k = 'insp_geo')),
+               'คำนวณระยะห่างจากพิกัดอาคารได้ถูกต้อง (haversine)');
+select test.ok((public.record_inspection_location((select v from ctx where k = 'insp_geo'), 16.820000, 100.260000, 20) ->> 'status') = 'far',
+               'ส่งผลห่างจากอาคารหลายกิโลเมตร → ระบบทำเครื่องหมาย “นอกพื้นที่” (far)');
+select test.ok((public.record_inspection_location((select v from ctx where k = 'insp_geo'), null, null, null, 'denied') ->> 'status') = 'denied',
+               'ผู้ตรวจไม่อนุญาตตำแหน่ง → บันทึกสถานะ denied (ไม่บังคับ)');
+select test.login('b0000000-0000-0000-0000-000000000003');
+select test.throws(format($$select public.record_inspection_location(%L, 16.7, 100.1)$$, (select v from ctx where k = 'insp_geo')),
+                   'FORBIDDEN', 'บันทึกตำแหน่งแทนผู้ตรวจคนอื่นไม่ได้');
+select test.login('b0000000-0000-0000-0000-000000000002');
+select public.record_inspection_location((select v from ctx where k = 'insp_geo'), 16.745300, 100.197200, 15);
+select public.submit_inspection((select v from ctx where k = 'insp_geo'), test.answers('{"1":{"result":"fail","note":"แรงดันต่ำ","urgency":"high","photo_exempt_reason":"ทดสอบ"}}'), null, gen_random_uuid());
+select test.throws(format($$select public.record_inspection_location(%L, 16.7, 100.1)$$, (select v from ctx where k = 'insp_geo')),
+                   'ALREADY_SUBMITTED', 'ส่งผลแล้วแก้พิกัดย้อนหลังไม่ได้');
+insert into ctx values ('fnd_geo', (select id from public.findings where inspection_id = (select v from ctx where k = 'insp_geo')));
+select test.ok((select plan_x = 40 and plan_y = 60 from public.findings where id = (select v from ctx where k = 'fnd_geo')),
+               'ข้อบกพร่องใหม่ได้ตำแหน่งหมุดของจุดตรวจเป็นค่าเริ่มต้น');
+
+-- หมุดข้อบกพร่อง
+select test.ok((select count(*) from public.findings where id = (select v from ctx where k = 'fnd_geo')) = 1, 'ผู้ตรวจที่พบเห็นข้อบกพร่องของตน');
+select public.set_finding_pin((select v from ctx where k = 'fnd_geo'), 42.5, 61, 'ข้างเสาต้นที่ 2');
+select test.ok((select plan_x = 42.5 and location_note = 'ข้างเสาต้นที่ 2' from public.findings where id = (select v from ctx where k = 'fnd_geo')),
+               'ผู้ตรวจที่พบปรับหมุดตำแหน่งข้อบกพร่องได้');
+select test.login('b0000000-0000-0000-0000-000000000003');
+select test.throws(format($$select public.set_finding_pin(%L, 10, 10)$$, (select v from ctx where k = 'fnd_geo')),
+                   'NOT_FOUND', 'ผู้ตรวจหน่วยงานอื่นแก้หมุดข้อบกพร่องของ A ไม่ได้');
+select test.login('b0000000-0000-0000-0000-000000000001');
+select test.throws(format($$select public.set_finding_pin(%L, 150, 10)$$, (select v from ctx where k = 'fnd_geo')),
+                   'INVALID_INPUT', 'หมุดนอกผัง (เกิน 100%) ถูกปฏิเสธ');
+
+-- แดชบอร์ดตามสโคป และภาพรวมรายอาคาร
+select test.login('b0000000-0000-0000-0000-000000000007');  -- ผู้บริหาร TST
+select test.ok(((public.dashboard_kpis('2026-01-01', '2026-12-31', p_zone => 'c3000000-0000-0000-0000-000000000001') ->> 'assets_active')::int = 3),
+               'กรองแดชบอร์ดตามโซน: เห็นจุดตรวจ 3 จุดในอาคารของโซน');
+select test.ok(((public.dashboard_kpis('2026-01-01', '2026-12-31', p_zone => 'c3000000-0000-0000-0000-000000000002') ->> 'assets_active')::int = 0),
+               'โซนที่ไม่มีอาคาร → 0 จุด');
+select test.ok(((public.dashboard_kpis('2026-01-01', '2026-12-31', p_floor => 'c1000000-0000-0000-0000-000000000001') ->> 'assets_active')::int = 2),
+               'กรองแดชบอร์ดตามชั้น');
+select test.ok((select assets_active = 3 and assets_pinned = 2 and floors_with_plan = 1
+                  from public.building_safety_overview('2026-01-01', '2026-12-31', p_campus => 'c2000000-0000-0000-0000-000000000001')),
+               'ภาพรวมรายอาคาร: นับจุดตรวจ หมุด และผังชั้น');
+select test.login('b0000000-0000-0000-0000-000000000003');  -- ผู้ตรวจ B
+select test.ok((select assets_active from public.building_safety_overview('2026-01-01', '2026-12-31')
+                 where building_id = 'c0000000-0000-0000-0000-000000000001') = 1,
+               'ภาพรวมรายอาคารนับเฉพาะจุดตรวจที่ผู้ดูมีสิทธิ์ (ผู้ตรวจ B เห็น 1 จุด)');
+reset role;
+
 do $$ begin raise notice '==> ALL % DATABASE TESTS PASSED', (select last_value from test.n); end $$;
