@@ -35,8 +35,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const f = await searchParams;
   const { from, to } = resolvePeriod(f, presetRange);
   const supabase = await createClient();
+  // ส่งพารามิเตอร์สโคปเฉพาะเมื่อเลือก — หน้าแดชบอร์ดจึงยังทำงานได้ระหว่างรอรันสคริปต์อัปเกรดฐานข้อมูล (deploy/05)
   const args = { p_org: f.org || null, p_building: f.building || null, p_category: f.category || null, p_assignee: f.assignee || null,
-    p_campus: f.campus || null, p_zone: f.zone || null, p_floor: null };
+    ...(f.campus ? { p_campus: f.campus } : {}), ...(f.zone ? { p_zone: f.zone } : {}) };
   const today = todayBangkok();
   const year = Number(to.slice(0, 4));
   const trendFrom = (() => { const d = new Date(to + "T00:00:00Z"); d.setUTCMonth(d.getUTCMonth() - 11); return d.toISOString().slice(0, 8) + "01"; })();

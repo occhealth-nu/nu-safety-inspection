@@ -19,9 +19,12 @@ fs.mkdirSync(OUT, { recursive: true });
 const state = {};   // ค่าที่ส่งต่อระหว่างขั้นตอน เช่น URL ของข้อบกพร่องที่สร้างขึ้น
 const only = new Set(process.argv.slice(2));
 
-async function open(browser, user, viewport = DESKTOP) {
+// พิกัดใกล้อาคารตัวอย่าง EN1 (ใช้จำลอง GPS ของผู้ตรวจ/ผู้ดูแลที่หน้างาน)
+const NEAR_EN1 = { latitude: 16.7454, longitude: 100.1973, accuracy: 12 };
+async function open(browser, user, viewport = DESKTOP, extra = {}) {
   const mobile = viewport.width < 600;
-  const ctx = await browser.newContext({ baseURL: BASE, viewport, deviceScaleFactor: mobile ? 2 : 1, isMobile: mobile, hasTouch: mobile, locale: "th-TH", timezoneId: "Asia/Bangkok" });
+  const ctx = await browser.newContext({ baseURL: BASE, viewport, deviceScaleFactor: mobile ? 2 : 1, isMobile: mobile, hasTouch: mobile, locale: "th-TH", timezoneId: "Asia/Bangkok",
+    permissions: ["geolocation"], geolocation: NEAR_EN1, ...extra });
   const page = await ctx.newPage();
   if (user) {
     await page.goto("/login");
@@ -156,6 +159,22 @@ const groups = {
     await m.waitForTimeout(300);
     await shot(m, "03-mobile-menu");
     await m.context().close();
+  },
+
+  // ---------- เตรียมผังชั้น (อัปโหลดผ่านหน้าจอจริง) ----------
+  async floorplans(b) {
+    for (const [user, code] of [["eng.admin", "EN1"], ["sci.admin", "SC2"], ["admin", "QS"]]) {
+      const p = await open(b, user);
+      await go(p, "/settings/locations?building=" + await buildingId(code));
+      const n = await main(p).getByTestId("floor-list").locator("li").count();
+      for (let i = 0; i < n; i++) {
+        await main(p).getByTestId("floor-list").locator("li").nth(i).locator("input[type=file]").setInputFiles(path.join(ASSETS, "plan-floor.png"));
+        await p.waitForURL(/flash=/, { timeout: 20000 });
+        await p.waitForLoadState("networkidle");
+      }
+      await p.context().close();
+      console.log("  plans uploaded", code, n);
+    }
   },
 
   // ---------- ส่วนที่ 2: ผู้ตรวจ (มือถือ) ----------
@@ -467,11 +486,34 @@ const groups = {
     await m.context().close();
   },
 
+  // ---------- อาคารและพื้นที่ ----------
+  async buildings(b) {
+    const p = await open(b, "coordinator", { width: 1280, height: 1000 });
+    await go(p, "/buildings");
+    await mark(p, [[1, main(p).getByLabel("วิทยาเขต/พื้นที่")], [2, main(p).getByLabel("โซน")], [3, main(p).getByRole("heading", { name: /วิทยาเขตหลัก/ }), { corner: "tl" }],
+      [4, main(p).getByRole("heading", { name: /โซนวิศวกรรม/ }), { corner: "tl" }], [5, main(p).locator('[data-building="EN1"]'), { corner: "tr" }]]);
+    await shot(p, "45-buildings");
+    const card = main(p).locator('[data-building="EN1"]');
+    await focus(p, card, 60);
+    await mark(p, [[1, card.locator("span").filter({ hasText: /เร่งด่วน|ปกติ|ข้อบกพร่องค้าง/ }).first()], [2, card.getByText("ความครอบคลุมการตรวจ")],
+      [3, card.getByText("จุดตรวจ / ปักหมุดแล้ว")], [4, card.getByRole("link", { name: "ดูผังชั้นและจุดตรวจ" })], [5, card.getByRole("link", { name: /แผนที่\/นำทาง/ })]]);
+    await shot(p, "45-building-card", { clip: await card.boundingBox().then((bb) => ({ x: bb.x - 20, y: bb.y - 20, width: bb.width + 40, height: bb.height + 40 })) });
+    await go(p, `/buildings/${await buildingId("EN1")}`);
+    await mark(p, [[1, main(p).getByRole("navigation", { name: "เลือกชั้น" }), { corner: "tl" }], [2, main(p).getByTestId("floor-plan"), { corner: "tl" }],
+      [3, main(p).getByLabel("ความหมายของหมุด"), { corner: "tl" }], [4, main(p).getByTestId("floor-asset-list"), { corner: "tr" }],
+      [5, main(p).getByRole("link", { name: /แผนที่\/นำทาง/ })]]);
+    await shot(p, "46-building-detail");
+    await go(p, "/reports");
+    await mark(p, [[1, main(p).getByText("สรุปความปลอดภัยรายอาคาร").first(), { corner: "tl" }]]);
+    await shot(p, "47-report-buildings");
+    await p.context().close();
+  },
+
   // ---------- ส่วนที่ 6: ผู้ดูแลระบบ ----------
   async settings(b) {
     const p = await open(b, "admin", { width: 1280, height: 900 });
     await go(p, "/settings");
-    await mark(p, [[1, main(p).getByRole("link", { name: /หน่วยงาน/ }).first()], [2, main(p).getByRole("link", { name: /อาคาร ชั้น และห้อง/ })], [3, main(p).getByRole("link", { name: /ผู้ใช้และสิทธิ์/ })], [4, main(p).getByRole("link", { name: /แบบตรวจ/ }).first()], [5, main(p).getByRole("link", { name: /การแจ้งเตือน/ }).first()], [6, main(p).getByRole("link", { name: /ภาพลักษณ์/ })], [7, main(p).getByRole("link", { name: /ประวัติการใช้งาน/ })]]);
+    await mark(p, [[1, main(p).getByRole("link", { name: /หน่วยงาน/ }).first()], [2, main(p).getByRole("link", { name: /สถานที่และผังชั้น/ })], [3, main(p).getByRole("link", { name: /ผู้ใช้และสิทธิ์/ })], [4, main(p).getByRole("link", { name: /แบบตรวจ/ }).first()], [5, main(p).getByRole("link", { name: /การแจ้งเตือน/ }).first()], [6, main(p).getByRole("link", { name: /ภาพลักษณ์/ })], [7, main(p).getByRole("link", { name: /ประวัติการใช้งาน/ })]]);
     await shot(p, "50-settings");
 
     await go(p, "/settings/organizations");
@@ -482,11 +524,22 @@ const groups = {
     await mark(p, [[1, main(p).getByText("โครงสร้างหน่วยงาน").first(), { corner: "tl" }], [2, f("สังกัด")], [3, f("รหัส")], [4, f("ชื่อ (ไทย)")], [5, f("ประเภท")], [6, main(p).getByRole("button", { name: "เพิ่มหน่วยงาน" })]]);
     await shot(p, "51-organizations");
 
-    await go(p, "/settings/locations");
-    await main(p).getByText("+ เพิ่มอาคาร").first().click().catch(() => {});
-    await p.waitForTimeout(300);
-    await mark(p, [[1, main(p).getByText("อาคาร", { exact: true }).first(), { corner: "tl" }], [2, main(p).getByText("ชั้น", { exact: true }).first(), { corner: "tl" }], [3, main(p).getByText("ห้อง/พื้นที่", { exact: true }).first(), { corner: "tl" }]]);
+    await go(p, "/settings/locations?building=" + await buildingId("EN1"));
+    await mark(p, [[1, main(p).getByTestId("campus-list"), { corner: "tl" }], [2, main(p).getByText("+ เพิ่มวิทยาเขต/พื้นที่"), { corner: "tl" }],
+      [3, main(p).getByText("+ เพิ่มโซน/กลุ่มอาคาร"), { corner: "tl" }]]);
+    await shot(p, "52-locations-campus");
+    await focus(p, main(p).getByText("2. อาคาร", { exact: true }), 80);
+    await mark(p, [[1, main(p).getByText("2. อาคาร", { exact: true }), { corner: "tl" }], [2, main(p).getByText("3. ชั้น และผังชั้น"), { corner: "tl" }],
+      [3, main(p).getByTestId("floor-list").getByRole("button", { name: /เปลี่ยนผัง|อัปโหลดผังชั้น/ }).first()], [4, main(p).getByText("4. ห้อง/พื้นที่"), { corner: "tl" }]]);
     await shot(p, "52-locations");
+    const locCard = main(p).getByText(/^ตำแหน่งอาคาร EN1/).first();
+    await focus(p, locCard, 80);
+    await mark(p, [[1, main(p).locator("select[name=zone_id]").last()], [2, main(p).locator("input[name=address]").last()],
+      [3, main(p).getByRole("button", { name: "ใช้ตำแหน่งปัจจุบัน" }).last()], [4, main(p).getByText("ตรวจดูบนแผนที่").last()]]);
+    await shot(p, "52-building-location");
+    await focus(p, main(p).getByText("การยืนยันตำแหน่งผู้ตรวจขณะส่งผล"), 80);
+    await mark(p, [[1, main(p).getByLabel("บันทึกพิกัดผู้ตรวจขณะส่งผล")], [2, main(p).getByLabel(/รัศมีที่ถือว่าอยู่ในพื้นที่/)]]);
+    await shot(p, "52-geo-settings");
 
     await go(p, "/settings/users");
     await mark(p, [[1, main(p).getByPlaceholder(/ค้นหาชื่อ/)], [2, main(p).getByRole("link", { name: /รอกำหนดสิทธิ์/ })], [3, main(p).getByText("+ เพิ่มบทบาท").first(), { corner: "r" }], [4, main(p).getByRole("button", { name: "ระงับ" }).first().or(main(p).getByText("ระงับ", { exact: true }).first())], [5, main(p).getByText("เพิ่มผู้ใช้ใหม่").first(), { corner: "tl" }]]);
@@ -523,6 +576,11 @@ const groups = {
     await p.context().close();
   },
 };
+async function buildingId(code) {
+  const env = Object.fromEntries(fs.readFileSync(path.join(ROOT, ".env.e2e"), "utf8").split("\n").filter(Boolean).map((l) => l.split(/=(.*)/s).slice(0, 2)));
+  const r = await fetch(`${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/buildings?code=eq.${code}&select=id`, { headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` } });
+  return (await r.json())[0]?.id;
+}
 async function idOf(code) {
   const env = Object.fromEntries(fs.readFileSync(path.join(ROOT, ".env.e2e"), "utf8").split("\n").filter(Boolean).map((l) => l.split(/=(.*)/s).slice(0, 2)));
   const r = await fetch(`${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/assets?code=eq.${code}&select=id`, { headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` } });

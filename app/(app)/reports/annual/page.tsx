@@ -12,7 +12,7 @@ export default async function AnnualReport({ searchParams }: { searchParams: Pro
   const year = Number(sp.year) || new Date().getFullYear();
   const supabase = await createClient();
   const { data } = await supabase.rpc("dashboard_annual", { p_year: year, p_group: "asset", p_org: sp.org || null, p_building: sp.building || null, p_category: sp.category || null, p_assignee: null,
-    p_campus: sp.campus || null, p_zone: sp.zone || null, p_floor: null });
+    ...(sp.campus ? { p_campus: sp.campus } : {}), ...(sp.zone ? { p_zone: sp.zone } : {}) });
   const rows = (data ?? []) as { group_key: string; group_label: string; month: number; due: number; done: number; overdue: number }[];
   const keys = Array.from(new Map(rows.map((r) => [r.group_key, r.group_label])).entries());
   const s = await getAppSettings();
