@@ -168,8 +168,11 @@ const groups = {
       await go(p, "/settings/locations?building=" + await buildingId(code));
       const n = await main(p).getByTestId("floor-list").locator("li").count();
       for (let i = 0; i < n; i++) {
+        const done = p.waitForResponse((r) => r.url().includes("/api/floor-plans"), { timeout: 20000 });
         await main(p).getByTestId("floor-list").locator("li").nth(i).locator("input[type=file]").setInputFiles(path.join(ASSETS, "plan-floor.png"));
-        await p.waitForURL(/flash=/, { timeout: 20000 });
+        const r = await done;
+        if (!r.ok()) throw new Error(`upload plan ${code} floor ${i + 1}: ${r.status()}`);
+        await p.waitForLoadState("load");
         await p.waitForLoadState("networkidle");
       }
       await p.context().close();
@@ -202,6 +205,12 @@ const groups = {
     await go(m, `/q/lookup?code=${assetCode}`);
     await mark(m, [[1, m.locator("main h1").first(), { corner: "tr" }], [2, main(m).getByRole("link", { name: /เริ่มตรวจ/ }).or(main(m).getByRole("button", { name: /เริ่มตรวจ/ })).first()]]);
     await shot(m, "10-qr-asset");
+    const qrLoc = main(m).getByText("ตำแหน่ง", { exact: true }).first();
+    await focus(m, qrLoc, 70);
+    await m.waitForTimeout(400);
+    await mark(m, [[1, main(m).getByTestId("floor-plan").first(), { corner: "tl" }], [2, main(m).getByRole("link", { name: /นำทางไปยัง/ }).first()]]);
+    await shot(m, "10-qr-location");
+    await m.evaluate(() => window.scrollTo(0, 0));
 
     // เริ่มตรวจ
     await main(m).getByRole("link", { name: /เริ่มตรวจ/ }).or(main(m).getByRole("button", { name: /เริ่มตรวจ/ })).first().click();
@@ -266,6 +275,10 @@ const groups = {
     await m.getByText("ระบบบันทึกผลตรวจเรียบร้อยแล้ว").waitFor();
     await mark(m, [[1, m.getByText("ระบบบันทึกผลตรวจเรียบร้อยแล้ว").first()], [2, m.locator('main a[href^="/findings/"]').first()]]);
     await shot(m, "12-submitted");
+    const geo = m.getByTestId("geo-status");
+    await focus(m, geo, 220);
+    await mark(m, [[1, geo, { corner: "tr" }]]);
+    await shot(m, "12-geo-status");
     state.findingUrl = await m.locator('main a[href^="/findings/"]').first().getAttribute("href");
     state.assetUrl = await m.locator('main a[href^="/assets/"]').first().getAttribute("href");
     fs.writeFileSync(path.join(OUT, "..", ".capture-state.json"), JSON.stringify(state));
@@ -283,6 +296,20 @@ const groups = {
       [4, heading(p, "หลักฐานก่อน–หลังแก้ไข"), { corner: "tl" }],
     ]);
     await shot(p, "20-finding-open");
+    // ปักหมุดตำแหน่งที่พบจริง
+    const locCard = heading(p, "ตำแหน่งข้อบกพร่อง");
+    await focus(p, locCard);
+    const sumry = main(p).getByText("ปักหมุด/แก้ไขตำแหน่งที่พบจริงบนผัง");
+    if (!(await main(p).getByTestId("plan-picker").isVisible())) await sumry.click();
+    const fp = main(p).getByTestId("plan-picker");
+    const fb = await fp.boundingBox();
+    await fp.click({ position: { x: fb.width * 0.27, y: fb.height * 0.47 } });
+    await main(p).getByPlaceholder(/ผนังด้านทิศเหนือ/).fill("ใต้ป้ายทางออกฝั่งตะวันตก");
+    await mark(p, [[1, sumry, { corner: "tl" }], [2, fp, { corner: "tr" }], [3, main(p).getByPlaceholder(/ผนังด้านทิศเหนือ/)], [4, main(p).getByRole("button", { name: "บันทึกตำแหน่ง" })]]);
+    await shot(p, "20-finding-pin");
+    await main(p).getByRole("button", { name: "บันทึกตำแหน่ง" }).click();
+    await p.getByText("บันทึกตำแหน่งข้อบกพร่องแล้ว").first().waitFor();
+    await go(p, state.findingUrl);
     await focus(p, heading(p, "มอบหมายผู้รับผิดชอบแก้ไข"));
     const who = main(p).getByLabel(/ผู้รับผิดชอบแก้ไข/);
     await who.selectOption((await who.locator("option", { hasText: "ช่างกองอาคารฯ" }).getAttribute("value")));
@@ -421,6 +448,14 @@ const groups = {
     await f("วันที่หมดอายุ").fill("2027-10-31");
     await mark(p, [[1, f("รหัสจุดตรวจ/อุปกรณ์")], [2, f("ประเภทอุปกรณ์")], [3, f("หน่วยงานเจ้าของ")], [4, f("อาคาร")], [5, f("ห้อง/พื้นที่")], [6, f("วันที่หมดอายุ")], [7, f("รอบตรวจ")], [8, f("สถานะ")]]);
     await shot(p, "31-asset-new");
+    const locBox = main(p).getByTestId("asset-location");
+    await focus(p, locBox, 20);
+    await p.waitForTimeout(500);
+    const picker = main(p).getByTestId("plan-picker");
+    const pb = await picker.boundingBox();
+    await picker.click({ position: { x: pb.width * 0.42, y: pb.height * 0.5 } });
+    await mark(p, [[1, picker, { corner: "tl" }], [2, main(p).getByText(/ปักหมุดที่ X/)], [3, main(p).getByRole("button", { name: "ใช้ตำแหน่งปัจจุบัน" })]]);
+    await shot(p, "31-asset-location");
     await main(p).getByRole("button", { name: "บันทึกจุดตรวจ" }).click();
     for (let i = 0; i < 40 && !(await idOf("FE-EN1-303")); i++) await p.waitForTimeout(250);
     state.newAsset = `/assets/${await idOf("FE-EN1-303")}`;
@@ -428,6 +463,10 @@ const groups = {
     await go(p, state.newAsset);
     await mark(p, [[1, main(p).getByText("QR Code", { exact: true }).first(), { corner: "tl" }], [2, main(p).getByRole("link", { name: "พิมพ์ QR" }).first(), { corner: "bl" }], [3, main(p).getByRole("link", { name: "แก้ไข" }).first(), { corner: "bl" }], [4, main(p).getByRole("link", { name: /เริ่มตรวจ/ }).first(), { corner: "bl" }], [5, main(p).getByText("เพิ่มรูป").first(), { corner: "tr" }]]);
     await shot(p, "32-asset-detail");
+    const loc = main(p).getByText("ตำแหน่ง", { exact: true }).first();
+    await focus(p, loc, 80);
+    await mark(p, [[1, main(p).getByTestId("floor-plan").last(), { corner: "tl" }], [2, main(p).getByRole("link", { name: "ดูในผังอาคาร" })], [3, main(p).getByRole("link", { name: /นำทางไปยัง/ })]]);
+    await shot(p, "32-asset-location");
     await go(p, `/assets/qr?id=${state.newAsset.split("/").pop()}&id=${await idOf("FE-EN1-101")}&id=${await idOf("FE-EN1-102")}`);
     await shot(p, "33-qr-print");
     await p.context().close();

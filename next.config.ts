@@ -3,6 +3,10 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   experimental: { serverActions: { bodySizeLimit: "12mb" } },
+  // คู่มือการใช้งานฉบับเว็บ (public/manual) เปิดได้โดยไม่ต้องเข้าสู่ระบบ
+  async rewrites() {
+    return [{ source: "/manual", destination: "/manual/index.html" }];
+  },
   async headers() {
     return [
       {

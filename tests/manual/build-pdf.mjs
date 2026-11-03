@@ -12,7 +12,7 @@ const OUT = path.join(ROOT, "docs/manual/คู่มือการใช้ง
 const TMP = fs.mkdtempSync(path.join(process.env.TMPDIR ?? "/tmp", "manual-"));
 
 const footer = `<div style="width:100%;font-family:SarabunAll,sans-serif;font-size:8.5pt;color:#4b5563;padding:0 17mm;display:flex;justify-content:space-between;align-items:center;-webkit-print-color-adjust:exact">
-  <span style="display:flex;align-items:center;gap:6px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#F26F21"></span><span>คู่มือการใช้งานระบบการตรวจความปลอดภัย (NU Safety Inspection) · ฉบับที่ 1.0</span></span>
+  <span style="display:flex;align-items:center;gap:6px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#F26F21"></span><span>คู่มือการใช้งานระบบการตรวจความปลอดภัย (NU Safety Inspection) · ฉบับที่ 2.0</span></span>
   <span class="pageNumber" style="font-weight:600;color:#1d2c4b"></span></div>`;
 
 // ภาพหน้าจอแปลงเป็น JPEG ก่อนฝังใน PDF (ลดขนาดไฟล์ PDF หลายเท่า)

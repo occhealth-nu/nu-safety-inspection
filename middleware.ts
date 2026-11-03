@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { configProblems, env } from "@/lib/env";
 
-const PUBLIC_PATHS = ["/login", "/auth", "/manifest.webmanifest", "/sw.js", "/offline.html", "/icons", "/api/cron", "/api/health", "/setup-check"];
+const PUBLIC_PATHS = ["/login", "/auth", "/manifest.webmanifest", "/sw.js", "/offline.html", "/icons", "/api/cron", "/api/health", "/setup-check", "/manual"];
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;

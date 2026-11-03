@@ -51,6 +51,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             </details>
           ) : <LoginForm next={sp.next ?? "/"} />}
         </div>
+        <p className="mt-4 text-center text-sm"><a href="/manual" className="text-brand underline">คู่มือการใช้งาน</a></p>
       </div>
     </main>
   );
