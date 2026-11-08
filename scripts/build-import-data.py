@@ -65,6 +65,42 @@ BUILDINGS = [
     ("PH", "PH3", "อาคารบริหาร คณะสาธารณสุขศาสตร์", 4),
 ]
 
+# ชุดเริ่มต้นพร้อมใช้ของคณะสาธารณสุขศาสตร์: พื้นที่มาตรฐานทุกชั้น + จุดตรวจพื้นฐานทุกชั้น + แผนการตรวจ
+STARTER_ORG = "PH"
+STARTER_ROOMS = [("โถงบันไดหนีไฟ", "common"), ("ทางเดินหลัก", "common"), ("ตู้ควบคุมไฟฟ้าประจำชั้น", "electrical")]
+# (ประเภท, ชื่อ, ห้อง/พื้นที่)
+STARTER_ASSETS = [
+    ("FE", "ถังดับเพลิง", "ทางเดินหลัก"),
+    ("EL", "ไฟฉุกเฉิน/ป้ายทางออก", "โถงบันไดหนีไฟ"),
+    ("EX", "ทางหนีไฟ/ประตูหนีไฟ", "โถงบันไดหนีไฟ"),
+    ("EE", "ตู้ไฟ/เต้ารับ/ปลั๊กพ่วง", "ตู้ควบคุมไฟฟ้าประจำชั้น"),
+    ("SP", "พื้นที่ Safety Patrol", "ทางเดินหลัก"),
+]
+STARTER_NOTE = "ชุดเริ่มต้น — ยืนยันตำแหน่ง/จำนวนจริงที่หน้างาน"
+# (ชื่อแผน, ประเภท, ความถี่, ต้องเสร็จภายใน (วัน))
+STARTER_PLANS = [
+    ("ตรวจถังดับเพลิงรายเดือน", "FE", "monthly", None),
+    ("ตรวจไฟฉุกเฉินและป้ายทางออกรายเดือน", "EL", "monthly", None),
+    ("ตรวจทางหนีไฟรายเดือน", "EX", "monthly", 14),
+    ("ตรวจระบบไฟฟ้ารายไตรมาส", "EE", "quarterly", None),
+    ("Safety Patrol รายเดือน", "SP", "monthly", None),
+]
+FREQ_TH = {"monthly": "รายเดือน", "quarterly": "รายไตรมาส"}
+
+# ช่องผู้ใช้ที่เตรียมไว้ (เหลือกรอกอีเมล/ชื่อ): (หน่วยงาน faculty, unit, บทบาท, หน้าที่)
+USER_SLOTS = [
+    ("มหาวิทยาลัยนเรศวร", "", "system_admin", "ผู้ดูแลระบบหลัก (1–2 คน)"),
+    ("กองอาคารสถานที่", "", "safety_coordinator", "ผู้ประสานงานความปลอดภัยส่วนกลาง ติดตามทุกคณะ"),
+    ("กองอาคารสถานที่", "", "responsible", "ช่าง/ผู้แก้ไขงานซ่อมที่ส่งต่อมาส่วนกลาง"),
+    ("คณะสาธารณสุขศาสตร์", "", "org_admin", "ผู้ดูแลอาคาร จุดตรวจ และผู้ใช้ของคณะ"),
+    ("คณะสาธารณสุขศาสตร์", "", "inspector", "ผู้ตรวจประจำอาคาร PH1 อาคารเรียนรวม"),
+    ("คณะสาธารณสุขศาสตร์", "", "inspector", "ผู้ตรวจประจำอาคาร PH2 อาคารสุขวิทยาสถิตย์"),
+    ("คณะสาธารณสุขศาสตร์", "", "inspector", "ผู้ตรวจประจำอาคาร PH3 อาคารบริหาร"),
+    ("คณะสาธารณสุขศาสตร์", "", "responsible", "ผู้รับผิดชอบแก้ไขข้อบกพร่องของคณะ"),
+    ("คณะสาธารณสุขศาสตร์", "", "verifier", "ผู้ตรวจยืนยันผลการแก้ไข"),
+    ("คณะสาธารณสุขศาสตร์", "", "executive", "ผู้บริหารคณะ (ดูแดชบอร์ด/รายงาน)"),
+]
+
 ROLES = [
     ("system_admin", "ผู้ดูแลระบบมหาวิทยาลัย", "ตั้งค่าทุกอย่าง เพิ่มหน่วยงาน/ผู้ใช้ทั้งมหาวิทยาลัย (ควรมีน้อยคน)"),
     ("safety_coordinator", "ผู้ประสานงานความปลอดภัยส่วนกลาง", "ดูและติดตามทุกหน่วยงาน วางแผนการตรวจ มอบหมายงาน"),
@@ -115,6 +151,61 @@ def build_sql():
     (ROOT / "deploy/06_import_nu_data.sql").write_text("\n".join(out))
 
 
+def starter_assets():
+    for _, bcode, bname, floors in BUILDINGS:
+        for lv in range(1, floors + 1):
+            for t, name, room in STARTER_ASSETS:
+                yield (f"{t}-{bcode}-{lv}01", f"{name} {bcode} ชั้น {lv}", t, bcode, bname, f"ชั้น {lv}", room)
+
+
+def build_sql_ready():
+    mig = (ROOT / "supabase/migrations/20261108000010_ready_data_helpers.sql").read_text()
+    org_name = {c: n for c, n, _ in ORGS}[STARTER_ORG]
+    out = [
+        "-- =====================================================================",
+        f"-- NU Safety Inspection — ชุดข้อมูลพร้อมใช้: {org_name} (อาคาร {', '.join(b[1] for b in BUILDINGS)})",
+        "--   • ห้อง/พื้นที่มาตรฐานทุกชั้น: " + ", ".join(r for r, _ in STARTER_ROOMS),
+        f"--   • จุดตรวจพื้นฐานทุกชั้น {len(STARTER_ASSETS)} ประเภท รวม {len(list(starter_assets()))} จุด (พิมพ์ QR ได้ทันที)",
+        f"--   • แผนการตรวจ {len(STARTER_PLANS)} แผน + งานตรวจตั้งแต่เดือนนี้ถึงสิ้นปี",
+        "-- วิธีใช้: Supabase → SQL Editor → New query → วางทั้งไฟล์ → Run  (รันหลังไฟล์ 06)",
+        "-- รันซ้ำได้ ไม่เกิดข้อมูลซ้ำ | จุดตรวจเป็นชุดเริ่มต้น: เดินยืนยันที่หน้างานแล้วแก้ไข/เพิ่ม/ลบในเว็บ",
+        "-- ไฟล์นี้สร้างอัตโนมัติจาก scripts/build-import-data.py — อย่าแก้ด้วยมือ",
+        "-- =====================================================================",
+        "",
+        "-- ---------- ส่วนที่ 1: เครื่องมือ ----------",
+        mig.strip(), "",
+        "do $$ begin",
+        "  if not exists (select 1 from public.buildings where code = 'PH1') then",
+        "    raise exception 'ยังไม่มีอาคาร PH1 — กรุณารันไฟล์ 06_import_nu_data.sql ก่อน';",
+        "  end if;",
+        "end $$;", "",
+        "-- ---------- ส่วนที่ 2: ห้อง/พื้นที่มาตรฐาน ----------",
+        "select r as ผลการนำเข้าห้อง from (values",
+    ]
+    rows = []
+    for _, bcode, _, floors in BUILDINGS:
+        for lv in range(1, floors + 1):
+            for room, kind in STARTER_ROOMS:
+                rows.append(f"  (app.import_location({q(bcode)}, {q(f'ชั้น {lv}')}, {q(room)}, null, {q(kind)}))")
+    out += [",\n".join(rows), ") v(r);", "", "-- ---------- ส่วนที่ 3: จุดตรวจ ----------",
+            "select r as ผลการนำเข้าจุดตรวจ from (values"]
+    out.append(",\n".join(f"  (app.import_asset({q(c)}, {q(n)}, {q(t)}, {q(b)}, {q(f)}, {q(room)}, null, {q(STARTER_NOTE)}))"
+                          for c, n, t, b, _, f, room in starter_assets()))
+    out += [") v(r);", "", "-- ---------- ส่วนที่ 4: แผนการตรวจ + งานตรวจ ----------",
+            "select r as ผลการสร้างแผน from (values"]
+    out.append(",\n".join(f"  (app.import_plan({q(n + ' — ' + org_name)}, {q(STARTER_ORG)}, {q(t)}, {q(fq)}, {d if d else 'null'}))"
+                          for n, t, fq, d in STARTER_PLANS))
+    out += [") v(r);", "", "-- ---------- ตรวจผล ----------",
+            "select b.code as อาคาร, count(distinct l.id) as ห้องพื้นที่, count(distinct a.id) as จุดตรวจ,",
+            "       count(distinct t.id) filter (where t.status = 'open') as งานตรวจที่รอ",
+            "  from public.buildings b left join public.floors f on f.building_id = b.id",
+            "  left join public.locations l on l.floor_id = f.id",
+            "  left join public.assets a on a.building_id = b.id",
+            "  left join public.inspection_tasks t on t.asset_id = a.id",
+            f" where b.code in ({', '.join(q(b[1]) for b in BUILDINGS)}) group by b.code order by b.code;", ""]
+    (ROOT / "deploy/07_ready_public_health.sql").write_text("\n".join(out))
+
+
 # ------------------------------------------------------------------ Excel
 FONT = "Tahoma"
 F = lambda **k: Font(name=FONT, size=k.pop("size", 10), **k)
@@ -163,9 +254,14 @@ def build_xlsx():
         ("ขั้นตอน (ทำครั้งแรกครั้งเดียว)", F(bold=True, size=12)),
         ("1. Supabase → SQL Editor → New query → วางไฟล์ deploy/06_import_nu_data.sql ทั้งไฟล์ → Run", F()),
         ("     → ได้หน่วยงาน 43 หน่วยงาน + อาคาร PH1–PH3 (ชั้น 1–4) + เครื่องมือนำเข้าผู้ใช้/ห้อง", F(color="5B6670")),
+        ("1.1 วางไฟล์ deploy/07_ready_public_health.sql ทั้งไฟล์ → Run", F()),
+        ("     → ได้ห้อง/พื้นที่มาตรฐาน 36 แห่ง จุดตรวจ 60 จุด (พิมพ์ QR ได้ทันที) และแผนการตรวจ 5 แผนพร้อมงานตรวจถึงสิ้นปี", F(color="5B6670")),
+        ("     → พิมพ์แท็บ “จุดตรวจเริ่มต้น” ไปเดินยืนยันที่หน้างาน แล้วแก้ไข/เพิ่ม/ลบในเว็บให้ตรงของจริง", F(color="5B6670")),
         ("", None),
         ("เพิ่มผู้ใช้งาน (แท็บ ผู้ใช้งาน)", F(bold=True, size=12)),
-        ("2. กรอกอีเมล @nu.ac.th ชื่อ ตำแหน่ง แล้วเลือก faculty (สังกัด) unit (หน่วยงานที่ได้รับสิทธิ์ — เว้นว่าง = เท่ากับ faculty) และบทบาท", F()),
+        ("2. แถวที่เตรียมไว้มีหน่วยงานและบทบาทแล้ว (ดูคอลัมน์ หน้าที่) — กรอกเพียงอีเมล @nu.ac.th ชื่อ และตำแหน่ง", F()),
+        ("     แถวไหนยังไม่มีคน ปล่อยว่างไว้ได้ (ไม่ถูกนำเข้า) — เพิ่มคนอื่นต่อท้ายได้โดยเลือก faculty/unit/บทบาทเอง", F(color="5B6670")),
+        ("2.1 กรอกอีเมล @nu.ac.th ชื่อ ตำแหน่ง แล้วเลือก faculty (สังกัด) unit (หน่วยงานที่ได้รับสิทธิ์ — เว้นว่าง = เท่ากับ faculty) และบทบาท", F()),
         ("     ผู้ใช้ 1 คนมีหลายบทบาทได้: กรอกหลายแถว อีเมลเดิม บทบาทต่างกัน", F(color="5B6670")),
         ("3. เลือกคอลัมน์ H (คำสั่ง SQL) เฉพาะแถวที่กรอก → คัดลอก → วางใน SQL Editor → Run", F()),
         ("4. ผู้ใช้กด “เข้าสู่ระบบด้วยบัญชี Google ของมหาวิทยาลัย” → ได้หน่วยงานและบทบาททันที ไม่ต้องรอผู้ดูแลอนุมัติ", F()),
@@ -190,14 +286,15 @@ def build_xlsx():
 
     # ---- หน่วยงาน
     wo = wb.create_sheet("หน่วยงาน")
-    title(wo, "หน่วยงาน (43)", "จากไฟล์ NU-Inspections-Users_3.csv — ใช้เป็นตัวเลือก faculty / unit ในแท็บอื่น")
+    title(wo, f"หน่วยงาน (มหาวิทยาลัย + {len(ORGS)})", "จากไฟล์ NU-Inspections-Users_3.csv — ใช้เป็นตัวเลือก faculty / unit ในแท็บอื่น")
     header(wo, 4, ["ลำดับ", "ชื่อหน่วยงาน", "รหัส", "ประเภท", "ประเภท (ระบบ)", "คำสั่ง SQL (สำหรับเพิ่มหน่วยงานใหม่)"], [7, 52, 11, 20, 14, 90])
-    for i, (code, name, typ) in enumerate(ORGS, 1):
+    ORG_TYPE_TH["university"] = "มหาวิทยาลัย (หน่วยงานราก)"
+    for i, (code, name, typ) in enumerate([("NU", "มหาวิทยาลัยนเรศวร", "university")] + ORGS, 1):
         r = 4 + i
         wo.cell(r, 1, i); wo.cell(r, 2, name); wo.cell(r, 3, code); wo.cell(r, 4, ORG_TYPE_TH[typ]); wo.cell(r, 5, typ)
         wo.cell(r, 6, f"=\"select app.import_organization('\"&SUBSTITUTE(C{r},\"'\",\"''\")&\"', '\"&SUBSTITUTE(B{r},\"'\",\"''\")&\"', '\"&E{r}&\"');\"")
         style_row(wo, r, 6, {CALC: (6,)})
-    last_org = 4 + len(ORGS)
+    last_org = 5 + len(ORGS)
     wo.freeze_panes = "B5"
     org_range = f"'หน่วยงาน'!$B$5:$B${last_org}"
 
@@ -269,20 +366,26 @@ def build_xlsx():
     wu = wb.create_sheet("ผู้ใช้งาน", 1)
     title(wu, "ผู้ใช้งาน (ลงทะเบียนล่วงหน้า)", "อีเมล @nu.ac.th เท่านั้น — ไม่ต้องใส่รหัสผ่าน ผู้ใช้เข้าด้วย Google ของมหาวิทยาลัย (แถวสีเขียวเป็นตัวอย่าง ไม่ถูกนำเข้า)")
     header(wu, 4, ["อีเมล (@nu.ac.th)", "ชื่อ-นามสกุล", "ตำแหน่ง", "faculty (สังกัด)", "unit (หน่วยงานที่ได้รับสิทธิ์)\nเว้นว่าง = เท่ากับ faculty",
-                   "บทบาท", "รหัสบทบาท", "คำสั่ง SQL", "ตรวจสอบ"], [30, 26, 22, 40, 40, 32, 18, 120, 26])
+                   "บทบาท", "รหัสบทบาท", "คำสั่ง SQL", "ตรวจสอบ", "หน้าที่ (คำแนะนำ)"], [30, 26, 22, 40, 40, 32, 18, 120, 24, 44])
     exu = ["somchai.j@nu.ac.th", "สมชาย ใจดี", "นักวิชาการอาชีวอนามัยและความปลอดภัย", "คณะสาธารณสุขศาสตร์", "", "ผู้ตรวจ"]
-    n_users = 300
+    role_th = {c: th for c, th, _ in ROLES}
+    slots = USER_SLOTS + [(n, "", "org_admin", "ผู้ดูแลของหน่วยงาน") for c, n, _ in ORGS if n not in {x[0] for x in USER_SLOTS}]
+    n_users = max(300, len(slots) + 100)
     for i in range(n_users + 1):
         r = 5 + i
         if i == 0:
             for col, v in enumerate(exu, 1): wu.cell(r, col, v)
+            wu.cell(r, 10, "แถวตัวอย่าง (ไม่ถูกนำเข้า)")
+        elif i <= len(slots):
+            fac, unit, role, duty = slots[i - 1]
+            wu.cell(r, 4, fac); wu.cell(r, 5, unit or None); wu.cell(r, 6, role_th[role]); wu.cell(r, 10, duty)
         wu.cell(r, 7, f'=IF(F{r}="","",IFERROR(INDEX({role_code},MATCH(F{r},{role_range},0)),"?"))')
         sql = (f"\"select app.import_user('\"&LOWER(TRIM(A{r}))&\"', '\"&SUBSTITUTE(B{r},\"'\",\"''\")&\"', '\"&SUBSTITUTE(C{r},\"'\",\"''\")"
                f"&\"', '\"&SUBSTITUTE(D{r},\"'\",\"''\")&\"', '\"&SUBSTITUTE(E{r},\"'\",\"''\")&\"', '\"&G{r}&\"');\"")
         wu.cell(r, 8, f'=IF(OR(A{r}="",D{r}="",F{r}=""),"",{"\"-- ตัวอย่าง: \"&" if i == 0 else ""}{sql})')
-        wu.cell(r, 9, f'=IF(A{r}="","",IF(ISERROR(SEARCH("@nu.ac.th",A{r})),"อีเมลต้องเป็น @nu.ac.th",'
+        wu.cell(r, 9, f'=IF(A{r}="",IF(F{r}<>"","รอกรอกอีเมล",""),IF(ISERROR(SEARCH("@nu.ac.th",A{r})),"อีเมลต้องเป็น @nu.ac.th",'
                       f'IF(D{r}="","ยังไม่เลือก faculty",IF(F{r}="","ยังไม่เลือกบทบาท",IF(G{r}="?","บทบาทไม่ถูกต้อง","พร้อมนำเข้า")))))')
-        style_row(wu, r, 9, {EX if i == 0 else INPUT: (1, 2, 3, 4, 5, 6), CALC: (7, 8, 9)})
+        style_row(wu, r, 10, {EX if i == 0 else INPUT: (1, 2, 3, 4, 5, 6), CALC: (7, 8, 9), "wrap": (10,)})
     end_u = 5 + n_users
     for rng, f1 in ((f"D5:E{end_u}", org_range), (f"F5:F{end_u}", role_range)):
         d = DataValidation(type="list", formula1=f1, allow_blank=True, showErrorMessage=True,
@@ -291,6 +394,23 @@ def build_xlsx():
     wu["A4"].comment = Comment("ต้องเป็นอีเมลของมหาวิทยาลัย (@nu.ac.th) ที่ใช้เข้าสู่ระบบด้วย Google", "NU Safety")
     wu["E4"].comment = Comment("ใช้เมื่อสิทธิ์ต่างจากสังกัด เช่น สังกัดคณะสาธารณสุขศาสตร์ แต่เป็นผู้ประสานงานของกองอาคารสถานที่", "NU Safety")
     wu.freeze_panes = "B5"
+
+    # ---- จุดตรวจเริ่มต้น (ใช้เดินยืนยันหน้างาน)
+    wa = wb.create_sheet("จุดตรวจเริ่มต้น", 2)
+    title(wa, f"จุดตรวจเริ่มต้น {len(list(starter_assets()))} จุด — คณะสาธารณสุขศาสตร์",
+          "สร้างโดย deploy/07_ready_public_health.sql — พิมพ์แผ่นนี้ไปเดินยืนยันที่หน้างาน แล้วแก้ไขในเว็บ (จุดตรวจ › แก้ไข)")
+    header(wa, 4, ["รหัสจุดตรวจ", "ชื่อ", "อาคาร", "ชั้น", "ห้อง/พื้นที่", "รอบตรวจ", "มีจริง (✓/✗)", "จำนวนจริง", "ตำแหน่งจริง / หมายเหตุ"],
+           [16, 34, 34, 9, 24, 12, 12, 11, 44])
+    freq_of = {t: f for _, t, f, _ in STARTER_PLANS}
+    for i, (c, n, t, b, bname, f, room) in enumerate(starter_assets()):
+        r = 5 + i
+        for col, v in enumerate([c, n, f"{b} {bname}", f, room, FREQ_TH[freq_of[t]]], 1): wa.cell(r, col, v)
+        style_row(wa, r, 9, {INPUT: (7, 8, 9)})
+    yn = DataValidation(type="list", formula1='"✓,✗"', allow_blank=True)
+    wa.add_data_validation(yn); yn.add(f"G5:G{4 + len(list(starter_assets()))}")
+    wa.freeze_panes = "B5"
+    wa.print_title_rows = "4:4"; wa.page_setup.orientation = "landscape"; wa.page_setup.fitToWidth = 1
+    wa.sheet_properties.pageSetUpPr.fitToPage = True; wa.page_setup.fitToHeight = 0
 
     for sh in wb.worksheets:
         sh.sheet_properties.tabColor = {"คำแนะนำ": "2F3337", "ผู้ใช้งาน": "F26F21"}.get(sh.title, "F7A46B")
@@ -303,4 +423,6 @@ def build_xlsx():
 if __name__ == "__main__":
     build_sql()
     print("สร้าง deploy/06_import_nu_data.sql แล้ว")
+    build_sql_ready()
+    print("สร้าง deploy/07_ready_public_health.sql แล้ว")
     print("สร้าง", build_xlsx().relative_to(ROOT), "แล้ว")
