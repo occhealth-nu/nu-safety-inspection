@@ -71,20 +71,23 @@
 2. เข้า [supabase.com/dashboard](https://supabase.com/dashboard) → เลือกโปรเจกต์ → เมนูซ้าย **SQL Editor** → **+ New query**
 3. วาง (Ctrl+V) ทั้งไฟล์ → กด **Run** (หรือ Ctrl+Enter)
 4. ต้องเห็นข้อความ **Success. No rows returned** ด้านล่าง
-   * ถ้าขึ้นกล่องเตือน “potentially destructive operation” ให้กด **Run this query** (สคริปต์มีคำสั่ง `drop view` เพื่อสร้างมุมมองข้อมูลใหม่ — ไม่ได้ลบข้อมูล)
-   * ถ้าหลุดกลางทางหรือ error ให้ **รันใหม่ทั้งไฟล์** ได้อย่างปลอดภัย (รันซ้ำได้)
-5. ตรวจผล: New query → วางคำสั่งนี้ → Run
-   ```sql
-   select (select count(*) from public.buildings where latitude is not null) as buildings_with_gps,
-          (select count(*) from public.assets where plan_x is not null) as pinned_assets,
-          (select count(*) from storage.buckets where id = 'floor-plans') as floor_plan_bucket;
-   ```
-   ควรได้ `floor_plan_bucket = 1` (สองค่าแรกเป็น 0 ได้ถ้ายังไม่ได้ตั้งค่าตำแหน่ง)
+    * ถ้าขึ้นกล่องเตือน “potentially destructive operation” ให้กด **Run this query** (สคริปต์มีคำสั่ง `drop view` เพื่อสร้างมุมมองข้อมูลใหม่ — ไม่ได้ลบข้อมูล)
+    * ถ้าหลุดกลางทางหรือ error ให้ **รันใหม่ทั้งไฟล์** ได้อย่างปลอดภัย (รันซ้ำได้)
+5. ตรวจผล: New query → วางคำสั่งด้านล่าง → Run
+
+```sql
+select (select count(*) from public.buildings where latitude is not null) as buildings_with_gps,
+       (select count(*) from public.assets where plan_x is not null) as pinned_assets,
+       (select count(*) from storage.buckets where id = 'floor-plans') as floor_plan_bucket;
+```
+
+ควรได้ `floor_plan_bucket = 1` (สองค่าแรกเป็น 0 ได้ถ้ายังไม่ได้ตั้งค่าตำแหน่ง)
 
 > ติดตั้งระบบใหม่ทั้งหมด (ฐานข้อมูลว่าง): ใช้ `deploy/01_install_database.sql` ซึ่งรวมการอัปเกรดนี้แล้ว — **ไม่ต้อง** รัน 05
 
 ### ขั้นที่ 3 — อัปเดตเว็บไซต์ (Vercel)
 โค้ดใหม่อยู่บน GitHub สาขา `main` แล้ว Vercel จะ deploy ให้อัตโนมัติ
+
 1. Vercel → โปรเจกต์ → แท็บ **Deployments** → รายการบนสุดต้องเป็น **Ready** (สีเขียว)
 2. ถ้ารายการบนสุดยังเป็นของเก่า: กด **⋯** → **Redeploy** → **Redeploy**
 3. ไม่ต้องเพิ่ม Environment Variable ใหม่
@@ -132,7 +135,7 @@
 ### 4.1 ไฟล์ที่เปลี่ยน
 | ส่วน | ไฟล์ |
 |---|---|
-| ฐานข้อมูล | `supabase/migrations/20261103000008_building_locations.sql` (= `deploy/05_upgrade_building_locations.sql` ไม่รวมข้อมูลตั้งต้นท้ายไฟล์) |
+| ฐานข้อมูล | `supabase/migrations/20261103000008_building_locations.sql` (เนื้อหาเดียวกับ `deploy/05_upgrade_building_locations.sql`) |
 | ข้อมูลสาธิต | `supabase/seed.sql` (พิกัดอาคาร/หมุดตัวอย่าง) |
 | หน้าจอใหม่ | `app/(app)/buildings/page.tsx`, `app/(app)/buildings/[id]/page.tsx` |
 | คอมโพเนนต์ | `components/location/*` (FloorPlan, PlanPicker, GeoInputs, FloorPlanUpload, FindingPinEditor, AssetLocationCard) |
