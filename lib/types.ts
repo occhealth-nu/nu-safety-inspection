@@ -19,6 +19,7 @@ export interface Organization { id: string; parent_id: string | null; code: stri
 export interface Building {
   id: string; organization_id: string; code: string; name: string; description: string | null; is_active: boolean;
   latitude: number | null; longitude: number | null; address: string | null;
+  building_no?: number | null; building_type?: string | null;
 }
 export interface Floor { id: string; building_id: string; name: string; level: number; plan_path: string | null; plan_updated_at: string | null }
 export interface Location { id: string; floor_id: string; name: string; room_no: string | null; location_type: string | null }

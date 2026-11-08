@@ -63,6 +63,9 @@ export default async function BuildingsPage({ searchParams }: { searchParams: Pr
     );
   }
   const rows = (res.data ?? []) as OverviewRow[];
+  // เลขอาคาร/ประเภทอาคาร (คอลัมน์เสริม — ถ้าฐานข้อมูลยังไม่มีให้ข้ามไป)
+  const extra = await supabase.from("buildings").select("id, building_no, building_type");
+  const detail = new Map(((extra.error ? [] : extra.data) as { id: string; building_no: number | null; building_type: string | null }[]).map((d) => [d.id, d]));
 
   // จัดกลุ่มตามหน่วยงานเจ้าของอาคาร
   const groups = new Map<string, { org: string; items: OverviewRow[] }>();
@@ -99,8 +102,9 @@ export default async function BuildingsPage({ searchParams }: { searchParams: Pr
                     <article key={b.building_id} className={"rounded-xl border bg-white p-4 shadow-sm " + TONE_CARD[tone]} data-building={b.building_code}>
                       <div className="flex items-start justify-between gap-2">
                         <Link href={`/buildings/${b.building_id}`} className="min-w-0">
-                          <span className="font-mono text-xs text-gray-500">{b.building_code}</span>
+                          <span className="font-mono text-xs text-gray-500">{b.building_code}{detail.get(b.building_id)?.building_no ? ` · เลขอาคาร ${detail.get(b.building_id)!.building_no}` : ""}</span>
                           <span className="block font-semibold text-ink hover:text-brand">{b.building_name}</span>
+                          {detail.get(b.building_id)?.building_type && <span className="block text-xs text-gray-500">{detail.get(b.building_id)!.building_type}</span>}
                         </Link>
                         <Badge tone={TONE_BADGE[tone]} icon={false}>{TONE_GLYPH[tone]} {PIN_TONE_LABELS[tone]}</Badge>
                       </div>

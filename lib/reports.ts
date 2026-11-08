@@ -83,14 +83,16 @@ export async function buildReport(type: string, f: ReportFilter): Promise<Report
   if (type === "buildings") {
     const { data, error } = await supabase.rpc("building_safety_overview", { p_from: f.from, p_to: f.to, p_org: f.org || null });
     if (error) throw error;
+    const ex = await supabase.from("buildings").select("id, building_no, building_type");
+    const det = new Map(((ex.error ? [] : ex.data) as { id: string; building_no: number | null; building_type: string | null }[]).map((d) => [d.id, d]));
     type B = { building_id: string; building_code: string; building_name: string; organization_name: string; floors: number; floors_with_plan: number;
       assets_active: number; assets_pinned: number; tasks_due: number; tasks_done: number; tasks_overdue: number; findings_open: number; findings_urgent: number; last_inspected_at: string | null };
     const rows = ((data ?? []) as B[]).filter((b) => !f.building || b.building_id === f.building).map((b) => [
-      b.organization_name, b.building_code, b.building_name, b.assets_active, b.assets_pinned, `${b.floors_with_plan}/${b.floors}`,
+      b.organization_name, b.building_code, det.get(b.building_id)?.building_no ?? "—", b.building_name, det.get(b.building_id)?.building_type ?? "—", b.assets_active, b.assets_pinned, `${b.floors_with_plan}/${b.floors}`,
       b.tasks_due, b.tasks_done, b.tasks_due ? Math.round((b.tasks_done * 1000) / b.tasks_due) / 10 : "—", b.tasks_overdue, b.findings_open, b.findings_urgent,
       formatDateTime(b.last_inspected_at, { dateOnly: true })]);
     return { title: REPORT_TYPES.buildings.title, subtitle: period(f),
-      columns: ["หน่วยงานเจ้าของ", "รหัสอาคาร", "อาคาร", "จุดตรวจที่ใช้งาน", "ปักหมุดแล้ว", "ชั้นที่มีผัง/ทั้งหมด", "งานถึงกำหนด", "ตรวจแล้ว", "ความครอบคลุม (%)", "งานเกินกำหนด", "ข้อบกพร่องค้าง", "เร่งด่วนค้าง", "ตรวจล่าสุด"],
+      columns: ["หน่วยงานเจ้าของ", "รหัสอาคาร", "เลขอาคาร", "อาคาร", "ประเภทอาคาร", "จุดตรวจที่ใช้งาน", "ปักหมุดแล้ว", "ชั้นที่มีผัง/ทั้งหมด", "งานถึงกำหนด", "ตรวจแล้ว", "ความครอบคลุม (%)", "งานเกินกำหนด", "ข้อบกพร่องค้าง", "เร่งด่วนค้าง", "ตรวจล่าสุด"],
       rows, notes: ["ความครอบคลุม = ตรวจแล้ว ÷ งานที่ถึงกำหนดในช่วงเวลา × 100 · ข้อบกพร่องค้างนับ ณ วันที่ออกรายงาน · ข้อมูลตามสิทธิ์ของผู้ออกรายงาน"] };
   }
   if (type === "assets") {

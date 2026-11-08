@@ -32,7 +32,7 @@ export async function createBuilding(_: unknown, form: FormData): Promise<Action
   const ll = latLng(form); if (typeof ll === "string") return { ok: false, message: ll };
   const { data, error } = await supabase.from("buildings").insert({
     organization_id: s(form.get("organization_id")), code: s(form.get("code")).toUpperCase(), name: s(form.get("name")), description: s(form.get("description")) || null,
-    address: s(form.get("address")) || null, ...ll,
+    address: s(form.get("address")) || null, ...ll, ...buildingDetails(form),
   }).select("id").single();
   if (error) return toActionError(error, "เพิ่มอาคารไม่สำเร็จ");
   const floors = Number(form.get("floors") || 0);
@@ -68,11 +68,18 @@ function latLng(form: FormData): { latitude: number | null; longitude: number | 
   return { latitude, longitude };
 }
 
+// เลขอาคารตามสถานที่ + ประเภทอาคาร (ว่าง = ไม่ระบุ)
+function buildingDetails(form: FormData) {
+  if (!form.has("building_no") && !form.has("building_type")) return {};
+  const no = Number(s(form.get("building_no")));
+  return { building_no: Number.isInteger(no) && no > 0 ? no : null, building_type: s(form.get("building_type")) || null };
+}
+
 export async function saveBuildingLocation(_: unknown, form: FormData): Promise<ActionResult> {
   const ll = latLng(form); if (typeof ll === "string") return { ok: false, message: ll };
   const supabase = await createClient();
   const { data, error } = await supabase.from("buildings").update({
-    name: s(form.get("name")) || undefined, address: s(form.get("address")) || null, ...ll,
+    name: s(form.get("name")) || undefined, address: s(form.get("address")) || null, ...ll, ...buildingDetails(form),
   }).eq("id", s(form.get("id"))).select("id");
   if (error) return toActionError(error, "บันทึกข้อมูลอาคารไม่สำเร็จ");
   if (!data?.length) return { ok: false, message: "ไม่มีสิทธิ์แก้ไขอาคารนี้" };

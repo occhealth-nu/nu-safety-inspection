@@ -58,15 +58,22 @@ ORGS = [
 ]
 ORG_TYPE_TH = {"faculty": "คณะ/วิทยาลัย", "office": "กอง/สำนักงาน", "center": "ศูนย์/สถาบัน/สำนัก", "unit": "หน่วยงานย่อย/โรงเรียน"}
 
-# (หน่วยงานเจ้าของ, รหัสอาคาร, ชื่ออาคาร, จำนวนชั้น) — จาก Excel "อาคารในคณะสาธารณสุข"
-BUILDINGS = [
-    ("PH", "PH1", "อาคารเรียนรวม คณะสาธารณสุขศาสตร์", 4),
-    ("PH", "PH2", "อาคารสุขวิทยาสถิตย์", 4),
-    ("PH", "PH3", "อาคารบริหาร คณะสาธารณสุขศาสตร์", 4),
-]
+# อาคารทั้งหมดของมหาวิทยาลัย — ผ่านการตรวจ/ทำความสะอาดโดย scripts/clean-buildings.py
+import csv as _csv
+BUILDINGS = list(_csv.DictReader(open(ROOT / "data/nu-buildings.csv", encoding="utf-8-sig")))
+DEFAULT_FLOORS = 1   # อาคารที่ยังไม่ระบุจำนวนชั้น: สร้าง "ชั้น 1" ไว้ก่อน แล้วเติมจำนวนชั้นจริงภายหลัง
+CHANGES = list(_csv.DictReader(open(ROOT / "data/nu-buildings-changes.csv", encoding="utf-8-sig")))
+# รหัสอาคารเดิม (ไฟล์ก่อนหน้า) → รหัสตามทะเบียนอาคารของมหาวิทยาลัย
+RENAMES = [("PH1", "PHP03"), ("PH2", "PHP02"), ("PH3", "PHP01")]
+
+
+def floors_of(b):
+    return int(b["จำนวนชั้น"]) if b["จำนวนชั้น"] else DEFAULT_FLOORS
+
 
 # ชุดเริ่มต้นพร้อมใช้ของคณะสาธารณสุขศาสตร์: พื้นที่มาตรฐานทุกชั้น + จุดตรวจพื้นฐานทุกชั้น + แผนการตรวจ
 STARTER_ORG = "PH"
+STARTER_BUILDINGS = [b for b in BUILDINGS if b["หน่วยงาน"] == "คณะสาธารณสุขศาสตร์"]
 STARTER_ROOMS = [("โถงบันไดหนีไฟ", "common"), ("ทางเดินหลัก", "common"), ("ตู้ควบคุมไฟฟ้าประจำชั้น", "electrical")]
 # (ประเภท, ชื่อ, ห้อง/พื้นที่)
 STARTER_ASSETS = [
@@ -93,9 +100,9 @@ USER_SLOTS = [
     ("กองอาคารสถานที่", "", "safety_coordinator", "ผู้ประสานงานความปลอดภัยส่วนกลาง ติดตามทุกคณะ"),
     ("กองอาคารสถานที่", "", "responsible", "ช่าง/ผู้แก้ไขงานซ่อมที่ส่งต่อมาส่วนกลาง"),
     ("คณะสาธารณสุขศาสตร์", "", "org_admin", "ผู้ดูแลอาคาร จุดตรวจ และผู้ใช้ของคณะ"),
-    ("คณะสาธารณสุขศาสตร์", "", "inspector", "ผู้ตรวจประจำอาคาร PH1 อาคารเรียนรวม"),
-    ("คณะสาธารณสุขศาสตร์", "", "inspector", "ผู้ตรวจประจำอาคาร PH2 อาคารสุขวิทยาสถิตย์"),
-    ("คณะสาธารณสุขศาสตร์", "", "inspector", "ผู้ตรวจประจำอาคาร PH3 อาคารบริหาร"),
+    ("คณะสาธารณสุขศาสตร์", "", "inspector", "ผู้ตรวจประจำอาคาร PHP03 อาคารเรียนรวม"),
+    ("คณะสาธารณสุขศาสตร์", "", "inspector", "ผู้ตรวจประจำอาคาร PHP02 อาคารปฏิบัติการ (สุขวิทยาสถิตย์)"),
+    ("คณะสาธารณสุขศาสตร์", "", "inspector", "ผู้ตรวจประจำอาคาร PHP01 อาคารบริหาร"),
     ("คณะสาธารณสุขศาสตร์", "", "responsible", "ผู้รับผิดชอบแก้ไขข้อบกพร่องของคณะ"),
     ("คณะสาธารณสุขศาสตร์", "", "verifier", "ผู้ตรวจยืนยันผลการแก้ไข"),
     ("คณะสาธารณสุขศาสตร์", "", "executive", "ผู้บริหารคณะ (ดูแดชบอร์ด/รายงาน)"),
@@ -121,9 +128,11 @@ def q(v):
 # ------------------------------------------------------------------ SQL
 def build_sql():
     mig = (ROOT / "supabase/migrations/20261108000009_bulk_import.sql").read_text()
+    mig += "\n\n" + (ROOT / "supabase/migrations/20261109000011_building_details.sql").read_text()
     out = [
         "-- =====================================================================",
-        "-- NU Safety Inspection — นำเข้าหน่วยงาน 43 หน่วยงาน + อาคารคณะสาธารณสุขศาสตร์ 3 อาคาร (ชั้น 1–4)",
+        f"-- NU Safety Inspection — นำเข้าหน่วยงาน {len(ORGS)} หน่วยงาน + อาคารทั้งมหาวิทยาลัย {len(BUILDINGS)} อาคาร",
+        "--   (เลขอาคาร ประเภทอาคาร หน่วยงานเจ้าของ — ตรวจและแก้ข้อมูลแล้ว ดู data/nu-buildings-changes.csv)",
         "-- และติดตั้งเครื่องมือนำเข้าผู้ใช้/ห้อง จากแบบฟอร์ม Excel",
         "-- วิธีใช้: Supabase → SQL Editor → New query → วางทั้งไฟล์ → Run  (รันหลังไฟล์ 01–02 และ 05)",
         "-- รันซ้ำได้: หน่วยงาน/อาคารที่มีอยู่แล้ว (รหัสหรือชื่อตรงกัน) จะไม่ถูกเพิ่มซ้ำ",
@@ -138,21 +147,29 @@ def build_sql():
     ]
     rows = [f"  (app.import_organization({q(c)}, {q(n)}, {q(t)}))" for c, n, t in ORGS]
     out.append(",\n".join(rows))
-    out += [") v(r);", "", "-- ---------- ส่วนที่ 3: อาคารและชั้น (จาก Excel อาคารในคณะสาธารณสุข) ----------",
-            "select r as ผลการนำเข้าอาคาร from (values"]
-    out.append(",\n".join(f"  (app.import_building({q(o)}, {q(c)}, {q(n)}, {f}))" for o, c, n, f in BUILDINGS))
     out += [") v(r);", "",
-            "-- ---------- ตรวจผล ----------",
-            "select b.code as รหัสอาคาร, b.name as อาคาร, o.name_th as หน่วยงานเจ้าของ, count(f.id) as จำนวนชั้น",
+            "-- ---------- ส่วนที่ 3: ปรับรหัสอาคารเดิมให้ตรงทะเบียนอาคาร (ถ้าเคยนำเข้า PH1–PH3) ----------",
+            "select r as ผลการปรับรหัส from (values"]
+    out.append(",\n".join(f"  (app.rename_building_code({q(a)}, {q(b)}))" for a, b in RENAMES))
+    out += [") v(r);", "", f"-- ---------- ส่วนที่ 4: อาคาร {len(BUILDINGS)} อาคาร (จากทะเบียนอาคาร — file CAD อาคาร) ----------",
+            "-- อาคารที่ไม่ทราบจำนวนชั้นสร้าง \"ชั้น 1\" ไว้ก่อน — เติมจำนวนชั้นจริงในแบบฟอร์ม Excel แล้วรันคำสั่งของแถวนั้นซ้ำ",
+            "select r as ผลการนำเข้าอาคาร from (values"]
+    out.append(",\n".join(
+        f"  (app.import_building({q(b['หน่วยงาน'])}, {q(b['รหัสอาคาร'])}, {q(b['ชื่ออาคาร'])}, {floors_of(b)}, null, "
+        f"{int(b['เลขอาคาร'])}, {q(b['ประเภทอาคาร'])}, {q(b['ชื่อเรียกอื่น'] and 'ชื่อเรียกอื่น: ' + b['ชื่อเรียกอื่น'] or None)}))"
+        for b in BUILDINGS))
+    out += [") v(r);", "",
+            "-- ---------- ตรวจผล: จำนวนอาคารต่อหน่วยงาน (รวมต้องได้ " + str(len(BUILDINGS)) + " อาคาร) ----------",
+            "select coalesce(o.name_th, 'รวมทั้งหมด') as หน่วยงานเจ้าของ, count(*) as จำนวนอาคาร",
             "  from public.buildings b join public.organizations o on o.id = b.organization_id",
-            "  left join public.floors f on f.building_id = b.id",
-            f" where b.code in ({', '.join(q(b[1]) for b in BUILDINGS)})",
-            " group by b.code, b.name, o.name_th order by b.code;", ""]
+            f" where b.code in ({', '.join(q(b['รหัสอาคาร']) for b in BUILDINGS)})",
+            " group by rollup (o.name_th) order by o.name_th nulls last;", ""]
     (ROOT / "deploy/06_import_nu_data.sql").write_text("\n".join(out))
 
 
 def starter_assets():
-    for _, bcode, bname, floors in BUILDINGS:
+    for b in STARTER_BUILDINGS:
+        bcode, bname, floors = b["รหัสอาคาร"], b["ชื่ออาคาร"], floors_of(b)
         for lv in range(1, floors + 1):
             for t, name, room in STARTER_ASSETS:
                 yield (f"{t}-{bcode}-{lv}01", f"{name} {bcode} ชั้น {lv}", t, bcode, bname, f"ชั้น {lv}", room)
@@ -163,7 +180,7 @@ def build_sql_ready():
     org_name = {c: n for c, n, _ in ORGS}[STARTER_ORG]
     out = [
         "-- =====================================================================",
-        f"-- NU Safety Inspection — ชุดข้อมูลพร้อมใช้: {org_name} (อาคาร {', '.join(b[1] for b in BUILDINGS)})",
+        f"-- NU Safety Inspection — ชุดข้อมูลพร้อมใช้: {org_name} (อาคาร {', '.join(b['รหัสอาคาร'] for b in STARTER_BUILDINGS)})",
         "--   • ห้อง/พื้นที่มาตรฐานทุกชั้น: " + ", ".join(r for r, _ in STARTER_ROOMS),
         f"--   • จุดตรวจพื้นฐานทุกชั้น {len(STARTER_ASSETS)} ประเภท รวม {len(list(starter_assets()))} จุด (พิมพ์ QR ได้ทันที)",
         f"--   • แผนการตรวจ {len(STARTER_PLANS)} แผน + งานตรวจตั้งแต่เดือนนี้ถึงสิ้นปี",
@@ -175,15 +192,16 @@ def build_sql_ready():
         "-- ---------- ส่วนที่ 1: เครื่องมือ ----------",
         mig.strip(), "",
         "do $$ begin",
-        "  if not exists (select 1 from public.buildings where code = 'PH1') then",
-        "    raise exception 'ยังไม่มีอาคาร PH1 — กรุณารันไฟล์ 06_import_nu_data.sql ก่อน';",
+        "  if not exists (select 1 from public.buildings where code = 'PHP01') then",
+        "    raise exception 'ยังไม่มีอาคาร PHP01 — กรุณารันไฟล์ 06_import_nu_data.sql (ฉบับอาคาร 204 หลัง) ก่อน';",
         "  end if;",
         "end $$;", "",
         "-- ---------- ส่วนที่ 2: ห้อง/พื้นที่มาตรฐาน ----------",
         "select r as ผลการนำเข้าห้อง from (values",
     ]
     rows = []
-    for _, bcode, _, floors in BUILDINGS:
+    for b in STARTER_BUILDINGS:
+        bcode, floors = b["รหัสอาคาร"], floors_of(b)
         for lv in range(1, floors + 1):
             for room, kind in STARTER_ROOMS:
                 rows.append(f"  (app.import_location({q(bcode)}, {q(f'ชั้น {lv}')}, {q(room)}, null, {q(kind)}))")
@@ -202,7 +220,7 @@ def build_sql_ready():
             "  left join public.locations l on l.floor_id = f.id",
             "  left join public.assets a on a.building_id = b.id",
             "  left join public.inspection_tasks t on t.asset_id = a.id",
-            f" where b.code in ({', '.join(q(b[1]) for b in BUILDINGS)}) group by b.code order by b.code;", ""]
+            f" where b.code in ({', '.join(q(b['รหัสอาคาร']) for b in STARTER_BUILDINGS)}) group by b.code order by b.code;", ""]
     (ROOT / "deploy/07_ready_public_health.sql").write_text("\n".join(out))
 
 
@@ -253,9 +271,9 @@ def build_xlsx():
         ("", None),
         ("ขั้นตอน (ทำครั้งแรกครั้งเดียว)", F(bold=True, size=12)),
         ("1. Supabase → SQL Editor → New query → วางไฟล์ deploy/06_import_nu_data.sql ทั้งไฟล์ → Run", F()),
-        ("     → ได้หน่วยงาน 43 หน่วยงาน + อาคาร PH1–PH3 (ชั้น 1–4) + เครื่องมือนำเข้าผู้ใช้/ห้อง", F(color="5B6670")),
+        (f"     → ได้หน่วยงาน {len(ORGS)} หน่วยงาน + อาคารทั้งมหาวิทยาลัย {len(BUILDINGS)} อาคาร (เลขอาคาร ประเภท หน่วยงานเจ้าของ) + เครื่องมือนำเข้า", F(color="5B6670")),
         ("1.1 วางไฟล์ deploy/07_ready_public_health.sql ทั้งไฟล์ → Run", F()),
-        ("     → ได้ห้อง/พื้นที่มาตรฐาน 36 แห่ง จุดตรวจ 60 จุด (พิมพ์ QR ได้ทันที) และแผนการตรวจ 5 แผนพร้อมงานตรวจถึงสิ้นปี", F(color="5B6670")),
+        ("     → คณะสาธารณสุขศาสตร์ (PHP01–PHP03): ห้อง/พื้นที่มาตรฐาน 36 แห่ง จุดตรวจ 60 จุด (พิมพ์ QR ได้ทันที) และแผนการตรวจ 5 แผนพร้อมงานตรวจถึงสิ้นปี", F(color="5B6670")),
         ("     → พิมพ์แท็บ “จุดตรวจเริ่มต้น” ไปเดินยืนยันที่หน้างาน แล้วแก้ไข/เพิ่ม/ลบในเว็บให้ตรงของจริง", F(color="5B6670")),
         ("", None),
         ("เพิ่มผู้ใช้งาน (แท็บ ผู้ใช้งาน)", F(bold=True, size=12)),
@@ -270,8 +288,9 @@ def build_xlsx():
         ("เพิ่มห้อง/พื้นที่ (แท็บ ห้องและพื้นที่)", F(bold=True, size=12)),
         ("5. เลือกรหัสอาคาร ชั้น แล้วกรอกชื่อห้อง/เลขห้อง/ประเภท → คัดลอกคอลัมน์ G → วางใน SQL Editor → Run", F()),
         ("", None),
-        ("เพิ่มอาคารของหน่วยงานอื่น (แท็บ อาคารและชั้น)", F(bold=True, size=12)),
-        ("6. กรอกต่อท้ายตาราง (หน่วยงาน รหัสอาคาร ชื่ออาคาร จำนวนชั้น) → คัดลอกคอลัมน์ F → วางใน SQL Editor → Run", F()),
+        ("เติมจำนวนชั้น / แก้ข้อมูลอาคาร / เพิ่มอาคารใหม่ (แท็บ อาคารและชั้น)", F(bold=True, size=12)),
+        ("6. เติมจำนวนชั้นจริงในคอลัมน์ F (ว่าง = ระบบสร้างชั้น 1 ไว้ก่อน) หรือกรอกอาคารใหม่ต่อท้าย → คัดลอกคอลัมน์ I ของแถวที่แก้ → วางใน SQL Editor → Run", F()),
+        ("     รันซ้ำได้: ระบบเพิ่มชั้นที่ขาด และปรับชื่อ/หน่วยงาน/เลขอาคาร/ประเภทให้ตรงกับแถวนั้น · ดูผลตรวจข้อมูลที่แท็บ ผลตรวจข้อมูลอาคาร", F(color="5B6670")),
         ("     พิกัด GPS และผังชั้น: ตั้งในเว็บที่ ตั้งค่า › อาคารและพื้นที่ (ปุ่ม “ใช้ตำแหน่งปัจจุบัน” ขณะยืนที่อาคาร)", F(color="5B6670")),
         ("", None),
         ("ข้อควรรู้", F(bold=True, size=12)),
@@ -309,33 +328,72 @@ def build_xlsx():
     role_code = f"'บทบาท'!$B$5:$B${4 + len(ROLES)}"
 
     # ---- อาคารและชั้น
-    wbld = wb.create_sheet("อาคารและชั้น")
-    title(wbld, "อาคารและชั้น", "จาก Excel อาคารในคณะสาธารณสุข — กรอกต่อท้ายเพื่อเพิ่มอาคารของหน่วยงานอื่น")
-    header(wbld, 4, ["หน่วยงานเจ้าของ", "รหัสอาคาร", "ชื่ออาคาร", "จำนวนชั้น", "ชั้นที่สร้าง", "คำสั่ง SQL"], [44, 12, 44, 11, 22, 100])
-    name_of = {c: n for c, n, _ in ORGS}
-    n_rows = len(BUILDINGS) + 30
+    wbld = wb.create_sheet("อาคารและชั้น", 2)
+    title(wbld, f"อาคารและชั้น ({len(BUILDINGS)} อาคาร)",
+          "จากทะเบียนอาคาร (file CAD อาคาร) ที่ตรวจแล้ว — ช่องจำนวนชั้นสีเหลืองว่าง = ยังไม่ทราบ (ระบบสร้างชั้น 1 ไว้ก่อน) · เพิ่มอาคารใหม่ต่อท้ายได้")
+    header(wbld, 4, ["หน่วยงานเจ้าของ", "รหัสอาคาร", "ชื่ออาคาร", "เลขอาคาร", "ประเภทอาคาร", "จำนวนชั้น", "ชั้นที่สร้าง",
+                     "ต้องยืนยัน", "คำสั่ง SQL"], [40, 11, 52, 9, 24, 10, 16, 46, 100])
+    n_rows = len(BUILDINGS) + 50
+    btypes = sorted({b["ประเภทอาคาร"] for b in BUILDINGS})
     for i in range(n_rows):
         r = 5 + i
         if i < len(BUILDINGS):
-            o, c, n, f = BUILDINGS[i]
-            wbld.cell(r, 1, name_of[o]); wbld.cell(r, 2, c); wbld.cell(r, 3, n); wbld.cell(r, 4, f)
-        wbld.cell(r, 5, f'=IF(D{r}="","",IF(D{r}=1,"ชั้น 1","ชั้น 1 – ชั้น "&D{r}))')
-        wbld.cell(r, 6, f"=IF(OR(A{r}=\"\",B{r}=\"\",C{r}=\"\"),\"\",\"select app.import_building('\"&SUBSTITUTE(A{r},\"'\",\"''\")&\"', '\"&UPPER(B{r})&\"', '\"&SUBSTITUTE(C{r},\"'\",\"''\")&\"', \"&N(D{r})&\");\")")
-        style_row(wbld, r, 6, {INPUT: (1, 2, 3, 4), CALC: (5, 6)})
+            b = BUILDINGS[i]
+            for col, v in enumerate([b["หน่วยงาน"], b["รหัสอาคาร"], b["ชื่ออาคาร"], int(b["เลขอาคาร"]), b["ประเภทอาคาร"],
+                                     int(b["จำนวนชั้น"]) if b["จำนวนชั้น"] else None], 1):
+                wbld.cell(r, col, v)
+            if b["ต้องยืนยัน"]:
+                wbld.cell(r, 8, b["ต้องยืนยัน"])
+        wbld.cell(r, 7, f'=IF(B{r}="","",IF(F{r}="","ชั้น 1 (ยังไม่ระบุ)",IF(F{r}=1,"ชั้น 1","ชั้น 1 – ชั้น "&F{r})))')
+        wbld.cell(r, 9, f"=IF(OR(A{r}=\"\",B{r}=\"\",C{r}=\"\"),\"\",\"select app.import_building('\"&SUBSTITUTE(A{r},\"'\",\"''\")&\"', '\"&UPPER(B{r})&\"', '\"&SUBSTITUTE(C{r},\"'\",\"''\")&\"', \"&IF(F{r}=\"\",1,F{r})&\", null, \"&IF(D{r}=\"\",\"null\",D{r})&\", '\"&SUBSTITUTE(E{r},\"'\",\"''\")&\"');\")")
+        style_row(wbld, r, 9, {INPUT: (1, 2, 3, 4, 5, 6), CALC: (7, 9), "wrap": (8,)})
+        if i < len(BUILDINGS) and BUILDINGS[i]["ต้องยืนยัน"]:
+            wbld.cell(r, 8).fill = PatternFill("solid", fgColor="FDE2E1")
     end_b = 4 + n_rows
     dv = DataValidation(type="list", formula1=org_range, allow_blank=True, showErrorMessage=True,
                         errorTitle="หน่วยงานไม่ถูกต้อง", error="เลือกจากรายการ (แท็บ หน่วยงาน)")
     wbld.add_data_validation(dv); dv.add(f"A5:A{end_b}")
-    dvn = DataValidation(type="whole", operator="between", formula1="0", formula2="60", allow_blank=True)
-    wbld.add_data_validation(dvn); dvn.add(f"D5:D{end_b}")
-    wbld.freeze_panes = "A5"
+    dvt = DataValidation(type="list", formula1='"' + ",".join(btypes) + '"', allow_blank=True)
+    wbld.add_data_validation(dvt); dvt.add(f"E5:E{end_b}")
+    dvn = DataValidation(type="whole", operator="between", formula1="1", formula2="60", allow_blank=True,
+                         showErrorMessage=True, error="จำนวนชั้น 1–60")
+    wbld.add_data_validation(dvn); dvn.add(f"F5:F{end_b}")
+    wbld.auto_filter.ref = f"A4:H{4 + len(BUILDINGS)}"
+    wbld.freeze_panes = "C5"
+
+    # ---- ผลตรวจข้อมูลอาคาร
+    wc = wb.create_sheet("ผลตรวจข้อมูลอาคาร", 3)
+    title(wc, f"ผลตรวจความสมบูรณ์ข้อมูลอาคาร — แก้ไข {len(CHANGES)} จุด",
+          "เปรียบเทียบไฟล์ต้นฉบับ (file CAD อาคาร) กับข้อมูลที่ใช้นำเข้า · แถวสีชมพูในแท็บ อาคารและชั้น = ต้องให้หน่วยงานยืนยัน")
+    summary = [
+        ("อาคารทั้งหมด", f"{len(BUILDINGS)} อาคาร · {len({b['หน่วยงาน'] for b in BUILDINGS})} หน่วยงานเจ้าของ"),
+        ("ช่องว่างในไฟล์ต้นฉบับ", "ไม่มี (ลำดับ รหัส โซน หน่วยงาน ชื่อ ประเภท เลขอาคาร ครบทุกแถว)"),
+        ("เลขอาคาร", "1–204 ครบ ไม่ซ้ำ"),
+        ("รหัสอาคารซ้ำ", "WTP01 (2 อาคาร), TSI (2 อาคาร) → ตั้งรหัสใหม่ WTP12, TSI01, TSI02"),
+        ("ชื่อหน่วยงานไม่ตรงรายชื่อ", "5 แบบ (23 แถว) → ปรับเป็นชื่อมาตรฐาน"),
+        ("คำสะกดผิดในชื่ออาคาร", "20 อาคาร (ปฎิบัติการ, ทัตแพทย์, สูน้ำ, อุตสาหรรม, SQURE ฯลฯ)"),
+        ("ช่องว่าง/ขึ้นบรรทัดเกินในชื่อ", "27 อาคาร"),
+        ("ยังไม่มีในไฟล์", f"จำนวนชั้น ({sum(1 for b in BUILDINGS if not b['จำนวนชั้น'])} อาคาร), พิกัด GPS (ทุกอาคาร)"),
+        ("โซน", "เก็บไว้อ้างอิงใน data/nu-buildings.csv — ไม่นำเข้า (ระบบยกเลิกโซนแล้ว)"),
+    ]
+    for i, (k, v) in enumerate(summary):
+        wc.cell(4 + i, 1, k).font = F(bold=True); wc.cell(4 + i, 2, v).font = F()
+    top = 5 + len(summary)
+    header(wc, top, ["ลำดับในไฟล์", "รหัสอาคาร", "ช่อง", "ค่าเดิม", "ค่าใหม่", "เหตุผล"], [14, 12, 12, 60, 60, 52])
+    wc.column_dimensions["A"].width = 26; wc.column_dimensions["B"].width = 70
+    for i, c in enumerate(CHANGES):
+        r = top + 1 + i
+        for col, k in enumerate(["ลำดับ", "รหัสอาคาร", "ช่อง", "ค่าเดิม", "ค่าใหม่", "เหตุผล"], 1):
+            wc.cell(r, col, int(c[k]) if k == "ลำดับ" else c[k])
+        style_row(wc, r, 6, {"wrap": (4, 5, 6)})
+    wc.freeze_panes = f"A{top + 1}"
 
     # ---- ห้องและพื้นที่
     wl = wb.create_sheet("ห้องและพื้นที่")
     title(wl, "ห้องและพื้นที่", "ยังไม่มีข้อมูลห้องในไฟล์ที่ได้รับ — กรอกเพิ่มได้ (แถวสีเขียวเป็นตัวอย่าง ไม่ถูกนำเข้า)")
     header(wl, 4, ["รหัสอาคาร", "ชั้น", "ชื่อห้อง/พื้นที่", "เลขห้อง", "ประเภท", "ประเภท (ระบบ)", "คำสั่ง SQL"], [12, 10, 36, 12, 18, 14, 110])
     wl["H4"] = None
-    ex = ["PH1", "ชั้น 1", "โถงบันไดหนีไฟ", "PH1-100", "พื้นที่ส่วนกลาง"]
+    ex = ["PHP03", "ชั้น 1", "โถงบันไดหนีไฟ", "PHP03-100", "พื้นที่ส่วนกลาง"]
     loc_th = f"'บทบาท'!$E$5:$E${4 + len(LOC_TYPES)}"
     # ตารางประเภทพื้นที่เก็บไว้ในแท็บ บทบาท คอลัมน์ E:F (ซ่อนไว้ด้านขวา)
     wr.cell(4, 5, "ประเภทพื้นที่").font = F(bold=True, color="FFFFFF"); wr.cell(4, 5).fill = HEAD

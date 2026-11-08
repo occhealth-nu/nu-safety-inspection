@@ -69,7 +69,7 @@ export default async function BuildingDetail({ params, searchParams }: { params:
   return (
     <>
       <PageHeader title={`${bld.code} — ${bld.name}`}
-        subtitle={<>เจ้าของ: {bld.organizations?.name_th}{bld.address ? ` · ${bld.address}` : ""}</>}
+        subtitle={<>เจ้าของ: {bld.organizations?.name_th}{bld.building_no ? ` · เลขอาคาร ${bld.building_no}` : ""}{bld.building_type ? ` · ${bld.building_type}` : ""}{bld.address ? ` · ${bld.address}` : ""}</>}
         back={{ href: "/buildings", label: "อาคารและพื้นที่" }}
         actions={<>
           {map && <a href={map} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50"><MapPin className="h-4 w-4" />แผนที่/นำทาง</a>}

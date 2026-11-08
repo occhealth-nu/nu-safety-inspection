@@ -13,14 +13,19 @@ import type { Floor, Location } from "@/lib/types";
 export const metadata = { title: "สถานที่และผังชั้น" };
 
 // สถานที่จากใหญ่ไปเล็ก: อาคาร (พิกัด) → ชั้น (ภาพผัง) → ห้อง/พื้นที่
-export default async function LocationsPage({ searchParams }: { searchParams: Promise<{ building?: string }> }) {
+export default async function LocationsPage({ searchParams }: { searchParams: Promise<{ building?: string; bq?: string }> }) {
   const s = await requireSession();
   if (!hasRole(s, MANAGER_ROLES)) return <NoAccess />;
   const sp = await searchParams;
   const supabase = await createClient();
   const [opts, settings] = await Promise.all([getFilterOptions(), getAppSettings()]);
   const manageable = opts.orgs.filter((o) => s.roles.some((r) => MANAGER_ROLES.includes(r.role) && o.ancestors.includes(r.organization_id)));
-  const sel = sp.building ?? opts.buildings[0]?.id;
+  // ค้นหาอาคาร (รหัส ชื่อ เลขอาคาร หรือชื่อหน่วยงาน) — อาคารมีหลายร้อยหลัง
+  const bq = (sp.bq ?? "").trim().toLowerCase();
+  const orgNameOf = new Map(opts.orgs.map((o) => [o.id, o.name_th]));
+  const shown = opts.buildings.filter((b) => !bq || [b.code, b.name, String(b.building_no ?? ""), orgNameOf.get(b.organization_id) ?? ""]
+    .some((v) => v.toLowerCase().includes(bq)));
+  const sel = sp.building ?? shown[0]?.id ?? opts.buildings[0]?.id;
   const building = opts.buildings.find((b) => b.id === sel);
   const [floors, locs] = await Promise.all([
     sel ? supabase.from("floors").select("*").eq("building_id", sel).order("level") : Promise.resolve({ data: [] }),
@@ -39,11 +44,16 @@ export default async function LocationsPage({ searchParams }: { searchParams: Pr
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card title="1. อาคาร">
-          <ul className="mb-4 max-h-80 space-y-1 overflow-y-auto">
-            {opts.buildings.map((b) => (
-              <li key={b.id}><a href={`?building=${b.id}`} className={"block rounded-lg px-2 py-1.5 text-sm " + (b.id === sel ? "bg-brand/10 font-semibold text-brand" : "hover:bg-gray-50")}>
+          <form method="get" className="mb-2 flex gap-2" role="search">
+            <input name="bq" defaultValue={sp.bq ?? ""} placeholder="ค้นหา รหัส ชื่อ เลขอาคาร หน่วยงาน" aria-label="ค้นหาอาคาร" className={inputClass} />
+            <button className="rounded-lg border border-gray-300 px-3 text-sm">ค้นหา</button>
+          </form>
+          <ul className="mb-4 max-h-96 space-y-1 overflow-y-auto">
+            {shown.length === 0 && <li className="px-2 py-1.5 text-sm text-gray-500">ไม่พบอาคารที่ตรงกับคำค้น</li>}
+            {shown.map((b) => (
+              <li key={b.id}><a href={`?building=${b.id}${sp.bq ? `&bq=${encodeURIComponent(sp.bq)}` : ""}`} className={"block rounded-lg px-2 py-1.5 text-sm " + (b.id === sel ? "bg-brand/10 font-semibold text-brand" : "hover:bg-gray-50")}>
                 {b.code} — {b.name}
-                <span className="block text-xs text-gray-500">{orgName.get(b.organization_id)}</span></a></li>
+                <span className="block text-xs text-gray-500">{b.building_no ? `เลขอาคาร ${b.building_no} · ` : ""}{orgName.get(b.organization_id)}</span></a></li>
             ))}
           </ul>
           <details><summary className="cursor-pointer text-sm font-medium text-brand">+ เพิ่มอาคาร</summary>
@@ -51,6 +61,10 @@ export default async function LocationsPage({ searchParams }: { searchParams: Pr
               <Field label="หน่วยงานเจ้าของ" required><select name="organization_id" className={inputClass}>{manageable.map((o) => <option key={o.id} value={o.id}>{o.name_th}</option>)}</select></Field>
               <Field label="รหัสอาคาร" required><input name="code" required className={inputClass} /></Field>
               <Field label="ชื่ออาคาร" required><input name="name" required className={inputClass} /></Field>
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="เลขอาคารตามสถานที่"><input name="building_no" type="number" min={1} className={inputClass} /></Field>
+                <Field label="ประเภทอาคาร"><input name="building_type" list="building-types" className={inputClass} /></Field>
+              </div>
               <Field label="จำนวนชั้น (สร้างอัตโนมัติ)"><input name="floors" type="number" min={0} max={60} className={inputClass} /></Field>
               <GeoInputs label="พิกัดอาคาร (ไม่บังคับ)" />
             </SimpleForm>
@@ -97,6 +111,10 @@ export default async function LocationsPage({ searchParams }: { searchParams: Pr
           <SimpleForm action="saveBuildingLocation" className="grid max-w-3xl grid-cols-1 gap-3">
             <input type="hidden" name="id" value={building.id} />
             <Field label="ชื่ออาคาร"><input name="name" defaultValue={building.name} className={inputClass} /></Field>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="เลขอาคารตามสถานที่"><input name="building_no" type="number" min={1} defaultValue={building.building_no ?? ""} className={inputClass} /></Field>
+              <Field label="ประเภทอาคาร"><input name="building_type" list="building-types" defaultValue={building.building_type ?? ""} className={inputClass} /></Field>
+            </div>
             <Field label="ที่อยู่/คำอธิบายตำแหน่ง"><input name="address" defaultValue={building.address ?? ""} className={inputClass} placeholder="เช่น ฝั่งทิศเหนือของถนนสายหลัก ใกล้ลานจอดรถ 3" /></Field>
             <GeoInputs lat={building.latitude} lng={building.longitude} label="พิกัดอาคาร (ใช้ตรวจว่าผู้ตรวจอยู่ที่อาคารจริงขณะส่งผล)"
               hint="ยืนที่หน้าอาคารแล้วกด “ใช้ตำแหน่งปัจจุบัน” หรือคัดลอกพิกัดจาก Google Maps (คลิกขวาที่อาคาร)" />
@@ -104,6 +122,9 @@ export default async function LocationsPage({ searchParams }: { searchParams: Pr
         </Card>
       )}
 
+      <datalist id="building-types">
+        {["สนับสนุนการเรียนการสอน", "สนับสนุนการวิจัย/ปฏิบัติการ", "สนับสนุนการบริการ", "สนับสนุนการบริหาร", "อาคารหอพัก", "อาคารอื่นๆ"].map((t) => <option key={t} value={t} />)}
+      </datalist>
       <Card title="การยืนยันตำแหน่งผู้ตรวจขณะส่งผล" className="mt-4">
         <p className="mb-3 text-sm text-gray-600">เมื่อเปิดใช้ ระบบจะขอพิกัด GPS ของโทรศัพท์ <b>ครั้งเดียวขณะกด “ส่งผลตรวจ”</b> แล้วเทียบระยะกับพิกัดจุดตรวจ/อาคาร
           เพื่อยืนยันว่าตรวจหน้างานจริง ผู้ตรวจปฏิเสธได้ (ระบบบันทึกว่า “ไม่อนุญาต” และยังส่งผลได้) ข้อมูลพิกัดเห็นเฉพาะผู้มีสิทธิ์ดูผลตรวจนั้น</p>

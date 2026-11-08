@@ -17,11 +17,14 @@ from (values
       'รันไฟล์ 05_upgrade_building_locations.sql'),
   (5, 'เครื่องมือนำเข้าผู้ใช้/อาคาร (app.import_user)',
       to_regprocedure('app.import_user(text,text,text,text,text,text)') is not null, 'รันไฟล์ 06_import_nu_data.sql'),
-  (6, 'อาคารคณะสาธารณสุขศาสตร์ PH1–PH3',
-      exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'buildings' and column_name = 'code')
-      and (select count(*) = 3 from public.buildings where code in ('PH1','PH2','PH3')), 'รันไฟล์ 06_import_nu_data.sql'),
-  (7, 'ชุดพร้อมใช้ (app.import_plan + จุดตรวจ PH)',
-      to_regprocedure('app.import_plan(text,text,text,text,integer,date,text)') is not null, 'รันไฟล์ 07_ready_public_health.sql'),
+  (6, 'ทะเบียนอาคารมหาวิทยาลัย 204 อาคาร (เลขอาคาร/ประเภทอาคาร)',
+      exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'buildings' and column_name = 'building_no')
+      and (select count(*) >= 204 from public.buildings b where to_jsonb(b) ->> 'building_no' is not null), 'รันไฟล์ 06_import_nu_data.sql (ฉบับ 204 อาคาร)'),
+  (7, 'ชุดพร้อมใช้คณะสาธารณสุขศาสตร์ (จุดตรวจ PHP01–PHP03)',
+      to_regprocedure('app.import_plan(text,text,text,text,integer,date,text)') is not null
+      and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'buildings' and column_name = 'building_no')
+      and (select count(*) >= 60 from public.assets a join public.buildings b on b.id = a.building_id where b.code like 'PHP0_'),
+      'รันไฟล์ 07_ready_public_health.sql'),
   (8, 'ไม่มีข้อมูลตัวอย่าง (DEMO) ปะปนในระบบจริง',
       not exists (select 1 from public.organizations where name_th like '%(ตัวอย่าง)')
       and not exists (select 1 from auth.users where lower(email) like '%@demo.example.com')
