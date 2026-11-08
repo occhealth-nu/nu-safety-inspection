@@ -6,7 +6,7 @@
 
 | ชุดทดสอบ | คำสั่ง | ผล |
 |---|---|---|
-| ฐานข้อมูล: migration + RLS + workflow + KPI | `npm run test:db` | **134/134 ผ่าน** (หมวด 12: สโคปพื้นที่ ผังชั้น หมุด พิกัดผู้ตรวจ 28 รายการ) |
+| ฐานข้อมูล: migration + RLS + workflow + KPI | `npm run test:db` | **133/133 ผ่าน** (หมวด 12: พิกัดอาคาร ผังชั้น หมุด พิกัดผู้ตรวจ 27 รายการ) |
 | Unit: วันที่ พ.ศ./เขตเวลา, แปลงข้อผิดพลาด, ระยะทาง/หมุด/สีสถานะ | `npm test` | **14/14 ผ่าน** |
 | E2E (เบราว์เซอร์จริง + Supabase Auth จริง + PostgREST + storage emulator) | `npm run test:e2e` | **29/29 ผ่าน** (รวม `buildings.spec.ts` 7 สถานการณ์: อัปโหลดผังชั้น ปักหมุด จำลอง GPS ใกล้/ไกลอาคาร สิทธิ์ผังอาคาร รายงานรายอาคาร) |
 | Type-check + production build | `npm run typecheck && npm run build` | ผ่าน |

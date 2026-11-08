@@ -529,8 +529,8 @@ const groups = {
   async buildings(b) {
     const p = await open(b, "coordinator", { width: 1280, height: 1000 });
     await go(p, "/buildings");
-    await mark(p, [[1, main(p).getByLabel("วิทยาเขต/พื้นที่")], [2, main(p).getByLabel("โซน")], [3, main(p).getByRole("heading", { name: /วิทยาเขตหลัก/ }), { corner: "tl" }],
-      [4, main(p).getByRole("heading", { name: /โซนวิศวกรรม/ }), { corner: "tl" }], [5, main(p).locator('[data-building="EN1"]'), { corner: "tr" }]]);
+    await mark(p, [[1, main(p).getByLabel("ช่วงเวลา")], [2, main(p).getByLabel("หน่วยงาน")], [3, main(p).getByRole("heading", { name: /คณะวิศวกรรมศาสตร์/ }), { corner: "tl" }],
+      [4, main(p).locator('[data-building="EN1"]'), { corner: "tr" }]]);
     await shot(p, "45-buildings");
     const card = main(p).locator('[data-building="EN1"]');
     await focus(p, card, 60);
@@ -564,16 +564,12 @@ const groups = {
     await shot(p, "51-organizations");
 
     await go(p, "/settings/locations?building=" + await buildingId("EN1"));
-    await mark(p, [[1, main(p).getByTestId("campus-list"), { corner: "tl" }], [2, main(p).getByText("+ เพิ่มวิทยาเขต/พื้นที่"), { corner: "tl" }],
-      [3, main(p).getByText("+ เพิ่มโซน/กลุ่มอาคาร"), { corner: "tl" }]]);
-    await shot(p, "52-locations-campus");
-    await focus(p, main(p).getByText("2. อาคาร", { exact: true }), 80);
-    await mark(p, [[1, main(p).getByText("2. อาคาร", { exact: true }), { corner: "tl" }], [2, main(p).getByText("3. ชั้น และผังชั้น"), { corner: "tl" }],
-      [3, main(p).getByTestId("floor-list").getByRole("button", { name: /เปลี่ยนผัง|อัปโหลดผังชั้น/ }).first()], [4, main(p).getByText("4. ห้อง/พื้นที่"), { corner: "tl" }]]);
+    await mark(p, [[1, main(p).getByText("1. อาคาร", { exact: true }), { corner: "tl" }], [2, main(p).getByText("2. ชั้น และผังชั้น"), { corner: "tl" }],
+      [3, main(p).getByTestId("floor-list").getByRole("button", { name: /เปลี่ยนผัง|อัปโหลดผังชั้น/ }).first()], [4, main(p).getByText("3. ห้อง/พื้นที่"), { corner: "tl" }]]);
     await shot(p, "52-locations");
     const locCard = main(p).getByText(/^ตำแหน่งอาคาร EN1/).first();
     await focus(p, locCard, 80);
-    await mark(p, [[1, main(p).locator("select[name=zone_id]").last()], [2, main(p).locator("input[name=address]").last()],
+    await mark(p, [[1, main(p).locator("input[name=name]").last()], [2, main(p).locator("input[name=address]").last()],
       [3, main(p).getByRole("button", { name: "ใช้ตำแหน่งปัจจุบัน" }).last()], [4, main(p).getByText("ตรวจดูบนแผนที่").last()]]);
     await shot(p, "52-building-location");
     await focus(p, main(p).getByText("การยืนยันตำแหน่งผู้ตรวจขณะส่งผล"), 80);
