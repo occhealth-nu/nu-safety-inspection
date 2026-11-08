@@ -158,10 +158,6 @@ export function Field({ label, children, hint, required, htmlFor }: { label: str
 
 export const inputClass = "block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:bg-gray-100";
 
-export function DemoBadge() {
-  return <Badge tone="warning" icon={false}>ข้อมูลตัวอย่าง</Badge>;
-}
-
 export function ExpertDraftBadge() {
   return <Badge tone="warning">ร่างสำหรับผู้เชี่ยวชาญตรวจรับรอง</Badge>;
 }

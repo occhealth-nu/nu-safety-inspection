@@ -59,7 +59,7 @@ app/
 components/              UI (ภาษาไทย), แบบบันทึกผลตรวจ, สแกน QR, กราฟ, ฟอร์ม
 lib/                     Supabase clients, สิทธิ์ (เพื่อแสดงเมนู), รูปแบบวันที่ พ.ศ., label, actions ฝั่งเซิร์ฟเวอร์, รายงาน
 supabase/migrations/     schema, RLS, RPC workflow, dashboard, storage, admin helpers
-supabase/seed.sql        ข้อมูลตัวอย่าง (DEMO) + demo_seed_activity()
+supabase/seed.sql        ข้อมูลตัวอย่างสำหรับการทดสอบอัตโนมัติเท่านั้น (ไม่ใช้กับระบบจริง)
 scripts/                 seed-demo, test-db, e2e-stack, e2e
 tests/db/                ทดสอบฐานข้อมูล (SQL) + shim จำลองบทบาท Supabase
 tests/unit/              vitest

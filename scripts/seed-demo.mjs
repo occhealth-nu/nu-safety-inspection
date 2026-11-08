@@ -7,6 +7,11 @@ import { createClient } from "@supabase/supabase-js";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const password = process.env.DEMO_PASSWORD;
+// ป้องกันการเผลอสร้างข้อมูลตัวอย่างบนระบบจริง: อนุญาตเฉพาะ stack ทดสอบในเครื่อง
+if (url && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/.test(url) && process.env.ALLOW_DEMO_SEED !== "yes") {
+  console.error("ปฏิเสธ: seed-demo ใช้กับ stack ทดสอบในเครื่องเท่านั้น (URL ต้องเป็น localhost/127.0.0.1)");
+  process.exit(1);
+}
 if (!url || !key || !password) {
   console.error("ต้องกำหนด NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY และ DEMO_PASSWORD (อย่างน้อย 10 ตัวอักษร)");
   process.exit(1);

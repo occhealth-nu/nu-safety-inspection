@@ -11,7 +11,7 @@
     "test": "vitest run",
     "test:db": "bash scripts/test-db.sh",
     "test:e2e": "bash scripts/e2e.sh",
-    "seed:demo": "node scripts/seed-demo.mjs"
+    "seed:demo:test-only": "node scripts/seed-demo.mjs"
   },
   "dependencies": {
     "@fontsource/sarabun": "^5.1.0",

@@ -9,7 +9,7 @@
 ## 2. ติดตั้งฐานข้อมูล
 
 ### ทางเลือก 0 — ไม่ใช้คำสั่ง (แนะนำสำหรับผู้ไม่มีพื้นฐาน)
-วางไฟล์ `deploy/01_install_database.sql` → `02_starter_data.sql` → (ไม่บังคับ `03_demo_data_optional.sql`) → `04_make_first_admin.sql` ใน Supabase SQL Editor ตามลำดับ — ดูขั้นตอนเต็มใน `docs/DEPLOY_GUIDE.md` (หลังแก้ migration ให้รัน `bash scripts/build-deploy-sql.sh` เพื่อสร้างไฟล์ 01 ใหม่)
+วางไฟล์ `deploy/01_install_database.sql` → `02_starter_data.sql` → `04_make_first_admin.sql` ใน Supabase SQL Editor ตามลำดับ — ดูขั้นตอนเต็มใน `docs/DEPLOY_GUIDE.md` (หลังแก้ migration ให้รัน `bash scripts/build-deploy-sql.sh` เพื่อสร้างไฟล์ 01 ใหม่)
 
 ### ทางเลือก A — Supabase CLI (แนะนำสำหรับพัฒนา)
 ```bash
@@ -24,7 +24,7 @@ npx supabase db reset        # รัน supabase/migrations/* แล้วต�
 npx supabase link --project-ref <project-ref>
 npx supabase db push         # รัน migrations
 ```
-ข้อมูลตัวอย่าง (ถ้าต้องการ): เปิด SQL Editor แล้วรันเนื้อหา `supabase/seed.sql` — **อย่ารันบนระบบจริง**
+ข้อมูลตัวอย่าง `supabase/seed.sql` ใช้สำหรับการทดสอบอัตโนมัติในเครื่องเท่านั้น — **ห้ามรันบนระบบจริง** (ถ้าเคยรันไปแล้ว ใช้ `deploy/08_remove_demo_data.sql` ลบออก)
 
 Migrations (เรียงตามลำดับ):
 
@@ -109,7 +109,7 @@ npm run test:e2e         # E2E: เปิด stack ในเครื่อง (
 
 ## 9. Checklist ก่อนใช้งานจริง
 
-- [ ] ลบ/ไม่รัน `supabase/seed.sql` และ `scripts/seed-demo.mjs` บนระบบจริง (ฟังก์ชัน `demo_seed_activity` อยู่ใน seed เท่านั้น)
+- [ ] ไม่รัน `supabase/seed.sql` และ `scripts/seed-demo.mjs` บนระบบจริง — ถ้าเคยรัน ให้รัน `deploy/08_remove_demo_data.sql`
 - [ ] ผู้เชี่ยวชาญตรวจรับรองแบบตรวจ, ระบุแหล่งอ้างอิง ฉบับ วันที่ตรวจสอบ แล้วเผยแพร่เวอร์ชันใหม่
 - [ ] อัปโหลดตรามหาวิทยาลัยทางการ (ตั้งค่าระบบ › ภาพลักษณ์)
 - [ ] ตั้ง `NEXT_PUBLIC_APP_URL` เป็นโดเมนถาวรก่อนพิมพ์ QR

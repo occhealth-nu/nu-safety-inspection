@@ -21,7 +21,11 @@ from (values
       exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'buildings' and column_name = 'code')
       and (select count(*) = 3 from public.buildings where code in ('PH1','PH2','PH3')), 'รันไฟล์ 06_import_nu_data.sql'),
   (7, 'ชุดพร้อมใช้ (app.import_plan + จุดตรวจ PH)',
-      to_regprocedure('app.import_plan(text,text,text,text,integer,date,text)') is not null, 'รันไฟล์ 07_ready_public_health.sql')
+      to_regprocedure('app.import_plan(text,text,text,text,integer,date,text)') is not null, 'รันไฟล์ 07_ready_public_health.sql'),
+  (8, 'ไม่มีข้อมูลตัวอย่าง (DEMO) ปะปนในระบบจริง',
+      not exists (select 1 from public.organizations where name_th like '%(ตัวอย่าง)')
+      and not exists (select 1 from auth.users where lower(email) like '%@demo.example.com')
+      and to_regprocedure('public.demo_seed_activity()') is null, 'รันไฟล์ 08_remove_demo_data.sql')
 ) v(ลำดับ, รายการ, ok, ต้องทำ)
 order by ลำดับ;
 
