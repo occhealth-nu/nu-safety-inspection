@@ -118,3 +118,6 @@ end $$;
 
 revoke execute on function app.import_asset(text, text, text, text, text, text, text, text) from public, anon, authenticated;
 revoke execute on function app.import_plan(text, text, text, text, int, date, text) from public, anon, authenticated;
+
+-- ให้ Supabase API โหลดรายการตาราง/ฟังก์ชันใหม่ทันที (ไม่ต้องรอ)
+notify pgrst, 'reload schema';

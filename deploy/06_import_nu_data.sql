@@ -192,6 +192,9 @@ revoke execute on function app.import_location(text, text, text, text, text) fro
 drop function if exists app.import_user(text, text, text, text, text);
 revoke execute on function app.import_user(text, text, text, text, text, text) from public, anon, authenticated;
 
+-- ให้ Supabase API โหลดรายการตาราง/ฟังก์ชันใหม่ทันที (ไม่ต้องรอ)
+notify pgrst, 'reload schema';
+
 -- ---------- ส่วนที่ 2: หน่วยงาน (จากไฟล์ NU-Inspections-Users_3.csv) ----------
 select r as ผลการนำเข้าหน่วยงาน from (values
   (app.import_organization('AGNRE', 'คณะเกษตรศาสตร์ ทรัพยากรธรรมชาติและสิ่งแวดล้อม', 'faculty')),

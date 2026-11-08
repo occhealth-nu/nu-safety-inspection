@@ -2815,6 +2815,9 @@ $$;
 grant execute on function public.building_safety_overview(date, date, uuid) to authenticated;
 revoke execute on function public.building_safety_overview(date, date, uuid) from public, anon;
 
+-- ให้ Supabase API โหลดรายการตาราง/ฟังก์ชันใหม่ทันที (ไม่ต้องรอ)
+notify pgrst, 'reload schema';
+
 -- >>>>>>>>>> 20261108000009_bulk_import.sql >>>>>>>>>>
 -- =====================================================================
 -- นำเข้าข้อมูลจำนวนมากผ่าน Supabase SQL Editor (ใช้คู่กับไฟล์ Excel แบบฟอร์มนำเข้า)
@@ -3001,6 +3004,9 @@ revoke execute on function app.import_location(text, text, text, text, text) fro
 drop function if exists app.import_user(text, text, text, text, text);
 revoke execute on function app.import_user(text, text, text, text, text, text) from public, anon, authenticated;
 
+-- ให้ Supabase API โหลดรายการตาราง/ฟังก์ชันใหม่ทันที (ไม่ต้องรอ)
+notify pgrst, 'reload schema';
+
 -- >>>>>>>>>> 20261108000010_ready_data_helpers.sql >>>>>>>>>>
 -- =====================================================================
 -- เครื่องมือเตรียมข้อมูลพร้อมใช้ (ใช้ใน Supabase SQL Editor เท่านั้น)
@@ -3122,3 +3128,6 @@ end $$;
 
 revoke execute on function app.import_asset(text, text, text, text, text, text, text, text) from public, anon, authenticated;
 revoke execute on function app.import_plan(text, text, text, text, int, date, text) from public, anon, authenticated;
+
+-- ให้ Supabase API โหลดรายการตาราง/ฟังก์ชันใหม่ทันที (ไม่ต้องรอ)
+notify pgrst, 'reload schema';

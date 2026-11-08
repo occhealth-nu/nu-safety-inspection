@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { isSchemaOutdated, SCHEMA_UPGRADE_HINT } from "@/lib/errors";
 import { Wrench } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth";
@@ -50,7 +51,7 @@ export default async function FindingsPage({ searchParams }: { searchParams: Pro
             className={"rounded-full px-3 py-1.5 text-sm font-medium ring-1 ring-inset " + (isTab(t) ? "bg-brand text-white ring-brand" : "bg-white text-gray-700 ring-gray-300 hover:bg-gray-50")}>{label}</Link>
         ))}
       </div>
-      {error ? <ErrorState retryHref="/findings" /> : rows.length === 0 ? <EmptyState icon={<Wrench className="h-8 w-8" />} title="ไม่พบรายการตามเงื่อนไข" /> : (
+      {error ? <ErrorState retryHref="/findings" {...(isSchemaOutdated(error) ? { title: "ฐานข้อมูลยังไม่ได้อัปเกรด", message: SCHEMA_UPGRADE_HINT } : { message: `รหัสข้อผิดพลาด: ${error.code ?? "-"}` })} /> : rows.length === 0 ? <EmptyState icon={<Wrench className="h-8 w-8" />} title="ไม่พบรายการตามเงื่อนไข" /> : (
         <>
           <p className="mb-2 text-sm text-gray-600">ทั้งหมด {count?.toLocaleString("th-TH")} รายการ</p>
           <Table>

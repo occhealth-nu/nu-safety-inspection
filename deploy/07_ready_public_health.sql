@@ -130,6 +130,9 @@ end $$;
 revoke execute on function app.import_asset(text, text, text, text, text, text, text, text) from public, anon, authenticated;
 revoke execute on function app.import_plan(text, text, text, text, int, date, text) from public, anon, authenticated;
 
+-- ให้ Supabase API โหลดรายการตาราง/ฟังก์ชันใหม่ทันที (ไม่ต้องรอ)
+notify pgrst, 'reload schema';
+
 do $$ begin
   if not exists (select 1 from public.buildings where code = 'PH1') then
     raise exception 'ยังไม่มีอาคาร PH1 — กรุณารันไฟล์ 06_import_nu_data.sql ก่อน';

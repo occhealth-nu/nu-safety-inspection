@@ -34,3 +34,14 @@ export function toActionError(error: PgLikeError | null | undefined, fallback = 
 export function isNetworkError(e: unknown): boolean {
   return e instanceof TypeError && /fetch|network/i.test(String(e.message));
 }
+
+/** ฐานข้อมูลยังไม่มีฟังก์ชัน/คอลัมน์ที่โค้ดเวอร์ชันนี้ต้องใช้ (ยังไม่ได้รันไฟล์อัปเกรด หรือ API ยังไม่โหลดรายการใหม่) */
+export function isSchemaOutdated(error: PgLikeError | null | undefined): boolean {
+  if (!error) return false;
+  return ["PGRST202", "PGRST204", "PGRST200", "42883", "42703", "42P01"].includes(error.code ?? "")
+    || /could not find the (function|.*column)|does not exist|schema cache/i.test(error.message ?? "");
+}
+
+export const SCHEMA_UPGRADE_HINT =
+  "ฐานข้อมูลยังไม่ได้อัปเกรดให้ตรงกับระบบเวอร์ชันนี้ — ผู้ดูแลระบบเปิด Supabase › SQL Editor แล้วรันไฟล์ " +
+  "05_upgrade_building_locations.sql (ทั้งไฟล์) จากนั้นรีเฟรชหน้านี้ ถ้ารันแล้วยังขึ้นข้อความนี้ ให้รันคำสั่ง notify pgrst, 'reload schema'; แล้วรอ 1 นาที";

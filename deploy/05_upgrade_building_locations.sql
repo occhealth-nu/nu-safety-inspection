@@ -574,3 +574,6 @@ language sql stable security invoker set search_path = public as $$
 $$;
 grant execute on function public.building_safety_overview(date, date, uuid) to authenticated;
 revoke execute on function public.building_safety_overview(date, date, uuid) from public, anon;
+
+-- ให้ Supabase API โหลดรายการตาราง/ฟังก์ชันใหม่ทันที (ไม่ต้องรอ)
+notify pgrst, 'reload schema';

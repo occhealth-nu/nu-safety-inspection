@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { isSchemaOutdated, SCHEMA_UPGRADE_HINT } from "@/lib/errors";
 import { Boxes, Plus, QrCode } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession, hasRole, MANAGER_ROLES } from "@/lib/auth";
@@ -41,7 +42,7 @@ export default async function AssetsPage({ searchParams }: { searchParams: Promi
         <button className={buttonClass("secondary")}>ค้นหา</button>
         <Link href={"/assets" + qs({ ...sp, expiring: sp.expiring ? undefined : "1" })} className={buttonClass(sp.expiring ? "primary" : "ghost")}>ใกล้หมดอายุ/หมดอายุ (60 วัน)</Link>
       </form>
-      {error ? <ErrorState retryHref="/assets" /> : rows.length === 0 ? (
+      {error ? <ErrorState retryHref="/assets" {...(isSchemaOutdated(error) ? { title: "ฐานข้อมูลยังไม่ได้อัปเกรด", message: SCHEMA_UPGRADE_HINT } : { message: `รหัสข้อผิดพลาด: ${error.code ?? "-"}` })} /> : rows.length === 0 ? (
         <EmptyState icon={<Boxes className="h-8 w-8" />} title="ไม่พบจุดตรวจ" action={canManage ? <LinkButton href="/assets/new">เพิ่มจุดตรวจ</LinkButton> : undefined} />
       ) : (
         <form method="get" action="/assets/qr">

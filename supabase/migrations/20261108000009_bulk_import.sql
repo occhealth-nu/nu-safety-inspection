@@ -182,3 +182,6 @@ revoke execute on function app.import_building(text, text, text, int, text) from
 revoke execute on function app.import_location(text, text, text, text, text) from public, anon, authenticated;
 drop function if exists app.import_user(text, text, text, text, text);
 revoke execute on function app.import_user(text, text, text, text, text, text) from public, anon, authenticated;
+
+-- ให้ Supabase API โหลดรายการตาราง/ฟังก์ชันใหม่ทันที (ไม่ต้องรอ)
+notify pgrst, 'reload schema';

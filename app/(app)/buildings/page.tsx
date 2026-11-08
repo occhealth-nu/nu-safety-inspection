@@ -9,6 +9,7 @@ import { PinLegend, TONE_GLYPH } from "@/components/location/floor-plan";
 import { buildingTone, mapsUrl, PIN_TONE_LABELS, type PinTone } from "@/lib/location";
 import { formatDate, formatDateTime, formatPct, presetRange } from "@/lib/format";
 import type { Tone } from "@/lib/labels";
+import { isSchemaOutdated, SCHEMA_UPGRADE_HINT } from "@/lib/errors";
 
 export const metadata = { title: "อาคารและพื้นที่" };
 
@@ -34,7 +35,33 @@ export default async function BuildingsPage({ searchParams }: { searchParams: Pr
     supabase.rpc("building_safety_overview", { p_from: from, p_to: to, p_org: f.org || null }),
     getFilterOptions(),
   ]);
-  if (res.error) return (<><PageHeader title="อาคารและพื้นที่" /><ErrorState retryHref="/buildings" /></>);
+  if (res.error) {
+    console.error("[buildings] building_safety_overview", res.error.code, res.error.message);
+    const outdated = isSchemaOutdated(res.error);
+    // แสดงรายชื่ออาคารแบบพื้นฐานไว้ก่อน เพื่อให้ยังใช้งานได้ระหว่างรอแก้ไข
+    const { data: basic } = await supabase.from("buildings").select("id, code, name, organizations(name_th)").eq("is_active", true).order("code");
+    return (
+      <>
+        <PageHeader title="อาคารและพื้นที่" />
+        <ErrorState title={outdated ? "ฐานข้อมูลยังไม่ได้อัปเกรด" : "ไม่สามารถโหลดภาพรวมรายอาคารได้"}
+          message={outdated ? SCHEMA_UPGRADE_HINT : `รหัสข้อผิดพลาด: ${res.error.code ?? "-"} — ${res.error.message}`} retryHref="/buildings" />
+        {basic && basic.length > 0 && (
+          <section className="mt-4 rounded-xl border border-gray-200 bg-white p-4" aria-label="รายชื่ออาคาร">
+            <h2 className="mb-2 font-semibold text-ink">รายชื่ออาคาร ({basic.length})</h2>
+            <ul className="grid grid-cols-1 gap-1 text-sm md:grid-cols-2">
+              {basic.map((b) => {
+                const org = (b.organizations as unknown as { name_th: string } | null)?.name_th;
+                return (
+                  <li key={b.id}><Link href={`/buildings/${b.id}`} className="text-brand underline"><span className="font-mono">{b.code}</span> {b.name}</Link>
+                    {org && <span className="text-gray-500"> · {org}</span>}</li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
+      </>
+    );
+  }
   const rows = (res.data ?? []) as OverviewRow[];
 
   // จัดกลุ่มตามหน่วยงานเจ้าของอาคาร
