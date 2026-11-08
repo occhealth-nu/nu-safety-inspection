@@ -1,15 +1,13 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import type { Building, Campus, Organization, Zone } from "@/lib/types";
+import type { Building, Organization } from "@/lib/types";
 
 export async function getFilterOptions() {
   const supabase = await createClient();
-  const [orgs, buildings, people, campuses, zones] = await Promise.all([
+  const [orgs, buildings, people] = await Promise.all([
     supabase.from("organizations").select("*").eq("is_active", true).order("code"),
     supabase.from("buildings").select("*").eq("is_active", true).order("name"),
     supabase.from("profiles").select("id, full_name").eq("is_active", true).order("full_name").limit(500),
-    supabase.from("campuses").select("*").eq("is_active", true).order("sort_order").order("name"),
-    supabase.from("zones").select("*").eq("is_active", true).order("sort_order").order("name"),
   ]);
   const list = (orgs.data ?? []) as Organization[];
   // เรียงตามลำดับชั้น
@@ -19,7 +17,6 @@ export async function getFilterOptions() {
   add(null);
   return {
     orgs: tree, buildings: (buildings.data ?? []) as Building[], people: (people.data ?? []) as { id: string; full_name: string }[],
-    campuses: (campuses.data ?? []) as Campus[], zones: (zones.data ?? []) as Zone[],
   };
 }
 

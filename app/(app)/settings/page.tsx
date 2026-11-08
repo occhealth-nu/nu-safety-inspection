@@ -11,7 +11,7 @@ export default async function SettingsHome() {
   if (!hasRole(s, MANAGER_ROLES)) return <NoAccess />;
   const items = [
     { href: "/settings/organizations", title: "หน่วยงาน", desc: "โครงสร้างมหาวิทยาลัย → คณะ/หน่วยงาน", icon: Network, show: isSystemAdmin(s) || isCentral(s) },
-    { href: "/settings/locations", title: "สถานที่และผังชั้น", desc: "วิทยาเขต → โซน → อาคาร → ชั้น → ห้อง พิกัด GPS และภาพผังชั้น", icon: Building2, show: true },
+    { href: "/settings/locations", title: "สถานที่และผังชั้น", desc: "อาคาร → ชั้น → ห้อง พิกัด GPS และภาพผังชั้น", icon: Building2, show: true },
     { href: "/settings/users", title: "ผู้ใช้และสิทธิ์", desc: "เพิ่มผู้ใช้ กำหนดบทบาทตามหน่วยงาน ระงับบัญชี", icon: Users, show: true },
     { href: "/settings/checklists", title: "แบบตรวจ", desc: "สร้าง/ปรับแบบตรวจ จัดการเวอร์ชันและแหล่งอ้างอิง", icon: ClipboardList, show: true },
     { href: "/settings/notifications", title: "การแจ้งเตือน", desc: "ระยะเวลาเตือน การยกระดับเรื่อง และอีเมล", icon: Bell, show: true },

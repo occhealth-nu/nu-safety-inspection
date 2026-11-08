@@ -5,7 +5,7 @@ import { requireSession, hasRole, MANAGER_ROLES } from "@/lib/auth";
 import { floorPlanUrls } from "@/lib/queries";
 import { Badge, Card, LinkButton, NoAccess, PageHeader } from "@/components/ui";
 import { FloorPlan, PinLegend, TONE_GLYPH, type PlanPin } from "@/components/location/floor-plan";
-import { assetPinTone, mapsUrl, PIN_TONE_LABELS, scopePath, type PinTone } from "@/lib/location";
+import { assetPinTone, mapsUrl, PIN_TONE_LABELS, type PinTone } from "@/lib/location";
 import { CATEGORY_LABELS, SEVERITY_LABELS, SEVERITY_TONE, type Tone } from "@/lib/labels";
 import { formatDate, formatPct, presetRange } from "@/lib/format";
 import type { AssetRow, Building, DashboardKpis, FindingRow, Floor } from "@/lib/types";
@@ -20,9 +20,9 @@ export default async function BuildingDetail({ params, searchParams }: { params:
   const { id } = await params;
   const sp = await searchParams;
   const supabase = await createClient();
-  const { data: b } = await supabase.from("buildings").select("*, campuses(name), zones(name), organizations(name_th, ancestors)").eq("id", id).maybeSingle();
+  const { data: b } = await supabase.from("buildings").select("*, organizations(name_th, ancestors)").eq("id", id).maybeSingle();
   if (!b) return <NoAccess message="ไม่พบอาคาร" />;
-  const bld = b as Building & { campuses: { name: string } | null; zones: { name: string } | null; organizations: { name_th: string; ancestors: string[] } };
+  const bld = b as Building & { organizations: { name_th: string; ancestors: string[] } };
   const { from, to } = presetRange("ytd");
   const [floorsRes, assetsRes, findingsRes, kpiRes] = await Promise.all([
     supabase.from("floors").select("*").eq("building_id", id).order("level"),
@@ -69,7 +69,7 @@ export default async function BuildingDetail({ params, searchParams }: { params:
   return (
     <>
       <PageHeader title={`${bld.code} — ${bld.name}`}
-        subtitle={<>{scopePath([bld.campuses?.name, bld.zones?.name, bld.name])} · เจ้าของ: {bld.organizations?.name_th}{bld.address ? ` · ${bld.address}` : ""}</>}
+        subtitle={<>เจ้าของ: {bld.organizations?.name_th}{bld.address ? ` · ${bld.address}` : ""}</>}
         back={{ href: "/buildings", label: "อาคารและพื้นที่" }}
         actions={<>
           {map && <a href={map} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50"><MapPin className="h-4 w-4" />แผนที่/นำทาง</a>}

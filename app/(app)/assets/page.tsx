@@ -20,8 +20,6 @@ export default async function AssetsPage({ searchParams }: { searchParams: Promi
   const today = todayBangkok();
   let q = supabase.from("v_assets").select("*", { count: "exact" });
   if (sp.org) q = q.contains("org_ancestors", [sp.org]);
-  if (sp.campus) q = q.eq("campus_id", sp.campus);
-  if (sp.zone) q = q.eq("zone_id", sp.zone);
   if (sp.floor) q = q.eq("floor_id", sp.floor);
   if (sp.building) q = q.eq("building_id", sp.building);
   if (sp.category) q = q.eq("category", sp.category);
@@ -36,7 +34,7 @@ export default async function AssetsPage({ searchParams }: { searchParams: Promi
     <>
       <PageHeader title="ทะเบียนจุดตรวจและอุปกรณ์" subtitle="ข้อมูลอุปกรณ์ ตำแหน่ง รอบตรวจ และ QR Code"
         actions={canManage ? <><LinkButton href="/assets/new"><Plus className="h-4 w-4" />เพิ่มจุดตรวจ</LinkButton></> : undefined} />
-      <FilterBar action="/assets" values={sp} orgs={options.orgs} buildings={options.buildings} campuses={options.campuses} zones={options.zones} show={["campus", "zone", "building", "org", "category"]} />
+      <FilterBar action="/assets" values={sp} orgs={options.orgs} buildings={options.buildings} show={["building", "org", "category"]} />
       <form method="get" className="mb-3 flex flex-wrap gap-2">
         {Object.entries(sp).filter(([k]) => !["q", "page"].includes(k)).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
         <input name="q" defaultValue={sp.q} placeholder="ค้นหารหัส ชื่อ หรือหมายเลขเครื่อง" className={inputClass + " sm:w-80"} />

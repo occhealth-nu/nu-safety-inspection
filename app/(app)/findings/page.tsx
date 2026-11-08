@@ -25,8 +25,6 @@ export default async function FindingsPage({ searchParams }: { searchParams: Pro
   if (sp.overdue) q = q.eq("is_overdue", true);
   if (sp.recurring) q = q.not("recurrence_of", "is", null);
   if (sp.org) q = q.contains("org_ancestors", [sp.org]);
-  if (sp.campus) q = q.eq("campus_id", sp.campus);
-  if (sp.zone) q = q.eq("zone_id", sp.zone);
   if (sp.floor) q = q.eq("floor_id", sp.floor);
   if (sp.building) q = q.eq("building_id", sp.building);
   if (sp.category) q = q.eq("category", sp.category);
@@ -40,12 +38,12 @@ export default async function FindingsPage({ searchParams }: { searchParams: Pro
     ["รอตรวจยืนยัน", { group: "pending_verification" }], ["เกินกำหนด", { overdue: "1" }], ["เร่งด่วน", { status: "open_all", urgent: "1" }],
     ["เกิดซ้ำ", { recurring: "1" }], ["ปิดงานแล้ว", { status: "closed" }], ["งานของฉัน", { mine: "1", status: "open_all" }], ["ทั้งหมด", {}],
   ];
-  const keep = { campus: sp.campus, zone: sp.zone, floor: sp.floor, org: sp.org, building: sp.building, category: sp.category, assignee: sp.assignee };
+  const keep = { floor: sp.floor, org: sp.org, building: sp.building, category: sp.category, assignee: sp.assignee };
   const isTab = (t: Record<string, string | undefined>) => ["status", "group", "urgent", "overdue", "recurring", "mine"].every((k) => (sp[k] ?? "") === (t[k] ?? ""));
   return (
     <>
       <PageHeader title="ติดตามแก้ไขข้อบกพร่อง" subtitle="พบข้อบกพร่อง → มอบหมาย → กำลังแก้ไข → รอตรวจยืนยัน → ปิดงาน" />
-      <FilterBar action="/findings" values={sp} orgs={options.orgs} buildings={options.buildings} campuses={options.campuses} zones={options.zones} people={options.people} show={["campus", "zone", "building", "org", "category", "assignee"]} />
+      <FilterBar action="/findings" values={sp} orgs={options.orgs} buildings={options.buildings} people={options.people} show={["building", "org", "category", "assignee"]} />
       <div className="mb-3 flex flex-wrap gap-2">
         {tabs.map(([label, t]) => (
           <Link key={label} href={"/findings" + qs({ ...keep, ...t })}

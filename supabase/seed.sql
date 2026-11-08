@@ -30,18 +30,10 @@ select f.id, x.name, b.code || '-' || f.level || x.suffix, x.kind
   cross join (values ('โถงบันได', '00', 'common'), ('ทางเดินหลัก', '01', 'common'),
                      ('ห้องปฏิบัติการ', '05', 'laboratory'), ('ห้องควบคุมไฟฟ้า', '09', 'electrical')) x(name, suffix, kind);
 
--- ---------- วิทยาเขต / โซน / พิกัดอาคาร (ตัวอย่าง — พิกัดเป็นค่าประมาณเพื่อการสาธิต) ----------
-insert into public.campuses (id, code, name, address, latitude, longitude, sort_order) values
-  ('21000000-0000-0000-0000-000000000001', 'PLK', 'วิทยาเขตหลัก พิษณุโลก (ตัวอย่าง)', 'ต.ท่าโพธิ์ อ.เมือง จ.พิษณุโลก (ข้อมูลตัวอย่าง)', 16.746900, 100.195000, 1);
-insert into public.zones (id, campus_id, code, name, sort_order) values
-  ('22000000-0000-0000-0000-000000000001', '21000000-0000-0000-0000-000000000001', 'Z-ENG', 'โซนวิศวกรรมและวิทยาศาสตร์ (ตัวอย่าง)', 1),
-  ('22000000-0000-0000-0000-000000000002', '21000000-0000-0000-0000-000000000001', 'Z-ADM', 'โซนสำนักงานกลาง (ตัวอย่าง)', 2);
-update public.buildings set zone_id = '22000000-0000-0000-0000-000000000001', latitude = 16.745300, longitude = 100.197400,
-       address = 'ข้อมูลตัวอย่าง' where code = 'EN1';
-update public.buildings set zone_id = '22000000-0000-0000-0000-000000000001', latitude = 16.747700, longitude = 100.196100,
-       address = 'ข้อมูลตัวอย่าง' where code = 'SC2';
-update public.buildings set zone_id = '22000000-0000-0000-0000-000000000002', latitude = 16.748900, longitude = 100.192800,
-       address = 'ข้อมูลตัวอย่าง' where code = 'QS';
+-- ---------- พิกัดอาคาร (ตัวอย่าง — ค่าประมาณเพื่อการสาธิต) ----------
+update public.buildings set latitude = 16.745300, longitude = 100.197400, address = 'ข้อมูลตัวอย่าง' where code = 'EN1';
+update public.buildings set latitude = 16.747700, longitude = 100.196100, address = 'ข้อมูลตัวอย่าง' where code = 'SC2';
+update public.buildings set latitude = 16.748900, longitude = 100.192800, address = 'ข้อมูลตัวอย่าง' where code = 'QS';
 
 -- ---------- แบบตรวจ (ร่างสำหรับผู้เชี่ยวชาญตรวจรับรอง) ----------
 insert into public.checklist_templates (id, code, name, category, description) values

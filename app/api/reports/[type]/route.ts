@@ -13,7 +13,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const sp = new URL(request.url).searchParams;
   const def = presetRange("ytd");
   const date = (v: string | null, d: string) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : d);
-  const f = { from: date(sp.get("from"), def.from), to: date(sp.get("to"), def.to), org: sp.get("org") || undefined, campus: sp.get("campus") || undefined, zone: sp.get("zone") || undefined, building: sp.get("building") || undefined, category: sp.get("category") || undefined };
+  const f = { from: date(sp.get("from"), def.from), to: date(sp.get("to"), def.to), org: sp.get("org") || undefined, building: sp.get("building") || undefined, category: sp.get("category") || undefined };
   let report;
   try { report = await buildReport(type, f); } catch { return NextResponse.json({ ok: false, message: "สร้างรายงานไม่สำเร็จ" }, { status: 500 }); }
   if (!report) return NextResponse.json({ ok: false }, { status: 404 });

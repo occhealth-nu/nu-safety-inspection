@@ -65,7 +65,7 @@ export const GEO_STATUS_LABELS: Record<string, string> = {
   disabled: "ปิดการบันทึกตำแหน่งในระบบ",
 };
 
-/** ลำดับสโคปพื้นที่ (ใหญ่ → เล็ก) สำหรับแสดงเส้นทาง เช่น วิทยาเขต › โซน › อาคาร › ชั้น › ห้อง */
+/** เส้นทางพื้นที่ (ใหญ่ → เล็ก) เช่น อาคาร › ชั้น › ห้อง */
 export function scopePath(parts: (string | null | undefined)[]): string {
   return parts.filter((p) => p && p.trim()).join(" › ");
 }

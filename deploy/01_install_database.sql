@@ -2253,67 +2253,42 @@ end $$;
 -- =====================================================================
 -- ระบบตรวจสอบความปลอดภัยอาคาร: ลำดับพื้นที่จากใหญ่ไปเล็ก + การระบุตำแหน่ง
 --
---   วิทยาเขต/พื้นที่ตั้ง (campuses)
---     └ โซน/กลุ่มอาคาร (zones)                 ← ไม่บังคับ
---         └ อาคาร (buildings)  + พิกัด GPS
---             └ ชั้น (floors)  + ภาพผังชั้น (bucket "floor-plans")
---                 └ ห้อง/พื้นที่ (locations)
---                     └ จุดตรวจ/อุปกรณ์ (assets) + หมุดบนผังชั้น (plan_x, plan_y) + พิกัด GPS (ไม่บังคับ)
---                         └ ข้อบกพร่อง (findings) + หมุดตำแหน่งที่พบจริงบนผังชั้น
+--   อาคาร (buildings)  + พิกัด GPS
+--     └ ชั้น (floors)  + ภาพผังชั้น (bucket "floor-plans")
+--         └ ห้อง/พื้นที่ (locations)
+--             └ จุดตรวจ/อุปกรณ์ (assets) + หมุดบนผังชั้น (plan_x, plan_y) + พิกัด GPS (ไม่บังคับ)
+--                 └ ข้อบกพร่อง (findings) + หมุดตำแหน่งที่พบจริงบนผังชั้น
 --
 -- * หมุดบนผังเก็บเป็นร้อยละของความกว้าง/สูงภาพ (0–100) จึงไม่ขึ้นกับขนาดภาพหรือหน้าจอ
 -- * พิกัดผู้ตรวจบันทึกครั้งเดียวขณะส่งผลตรวจ เพื่อยืนยันว่าตรวจหน้างานจริง (ปิดได้ในหน้าตั้งค่า)
--- * ตัวกรองแดชบอร์ดเพิ่ม p_campus / p_zone / p_floor ทุกฟังก์ชัน (ค่าเดิมยังเรียกได้เหมือนเดิม)
+-- * ตัวกรองแดชบอร์ดเพิ่ม p_floor (ชั้น) ทุกฟังก์ชัน (การเรียกแบบเดิมยังใช้ได้)
+-- * ไม่มีระดับวิทยาเขต/โซน — ถ้าเคยติดตั้งฉบับที่มีวิทยาเขต/โซน สคริปต์นี้ลบออกให้ (หัวข้อ 0)
 -- รันซ้ำได้ (idempotent) สำหรับฐานข้อมูลที่ติดตั้งแล้ว
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
--- 1. วิทยาเขต และ โซน
+-- 0. ยกเลิกระดับวิทยาเขต/โซน (สำหรับฐานข้อมูลที่เคยรันสคริปต์ฉบับก่อนหน้า — ฐานข้อมูลใหม่ข้ามได้)
+--    views/ฟังก์ชันที่อ้างถึงถูกลบแล้วสร้างใหม่ในหัวข้อ 6–8 ของไฟล์นี้
 -- ---------------------------------------------------------------------
-create table if not exists public.campuses (
-  id          uuid primary key default gen_random_uuid(),
-  code        text not null unique,
-  name        text not null,
-  address     text,
-  latitude    numeric(9,6) check (latitude between -90 and 90),
-  longitude   numeric(9,6) check (longitude between -180 and 180),
-  sort_order  int not null default 0,
-  is_active   boolean not null default true,
-  created_at  timestamptz not null default now(),
-  updated_at  timestamptz not null default now(),
-  constraint campuses_latlng_pair check ((latitude is null) = (longitude is null))
-);
-
-create table if not exists public.zones (
-  id          uuid primary key default gen_random_uuid(),
-  campus_id   uuid not null references public.campuses(id) on delete restrict,
-  code        text not null,
-  name        text not null,
-  description text,
-  sort_order  int not null default 0,
-  is_active   boolean not null default true,
-  created_at  timestamptz not null default now(),
-  updated_at  timestamptz not null default now(),
-  unique (campus_id, code)
-);
-create index if not exists zones_campus_idx on public.zones(campus_id);
-
-drop trigger if exists campuses_touch on public.campuses;
-create trigger campuses_touch before update on public.campuses for each row execute function app.touch_updated_at();
-drop trigger if exists zones_touch on public.zones;
-create trigger zones_touch before update on public.zones for each row execute function app.touch_updated_at();
+drop view if exists public.v_inspection_tasks, public.v_findings, public.v_assets, public.v_inspections;
+drop function if exists public.building_safety_overview(date, date, uuid, uuid, uuid);
+drop function if exists public.building_safety_overview(date, date, uuid);
+drop function if exists public.dashboard_kpis(date, date, uuid, uuid, text, uuid, uuid, uuid, uuid);
+drop function if exists public.dashboard_annual(int, text, uuid, uuid, text, uuid, uuid, uuid, uuid);
+drop function if exists public.dashboard_trend(date, date, uuid, uuid, text, uuid, uuid, uuid, uuid);
+drop function if exists public.dashboard_findings_by_category(date, date, uuid, uuid, text, uuid, uuid, uuid, uuid);
+drop trigger if exists buildings_scope_guard on public.buildings;
+drop function if exists app.buildings_scope_guard();
+alter table public.buildings drop column if exists zone_id, drop column if exists campus_id;
+drop table if exists public.zones, public.campuses;
 
 -- ---------------------------------------------------------------------
 -- 2. คอลัมน์ตำแหน่งในตารางเดิม
 -- ---------------------------------------------------------------------
 alter table public.buildings
-  add column if not exists campus_id uuid references public.campuses(id) on delete restrict,
-  add column if not exists zone_id   uuid references public.zones(id) on delete set null,
   add column if not exists latitude  numeric(9,6) check (latitude between -90 and 90),
   add column if not exists longitude numeric(9,6) check (longitude between -180 and 180),
   add column if not exists address   text;
-create index if not exists buildings_campus_idx on public.buildings(campus_id);
-create index if not exists buildings_zone_idx on public.buildings(zone_id);
 do $$ begin
   alter table public.buildings add constraint buildings_latlng_pair check ((latitude is null) = (longitude is null));
 exception when duplicate_object then null; end $$;
@@ -2358,53 +2333,9 @@ alter table public.app_settings
   add column if not exists geo_capture_enabled boolean not null default true,
   add column if not exists geo_radius_m        int not null default 300 check (geo_radius_m between 20 and 5000);
 
--- อาคารที่ระบุโซน: วิทยาเขตต้องตรงกับวิทยาเขตของโซน (เติมให้อัตโนมัติ)
-create or replace function app.buildings_scope_guard() returns trigger
-language plpgsql as $$
-declare v_campus uuid;
-begin
-  if new.zone_id is not null then
-    select campus_id into v_campus from public.zones where id = new.zone_id;
-    if new.campus_id is null then new.campus_id := v_campus;
-    elsif new.campus_id <> v_campus then raise exception 'โซนที่เลือกไม่อยู่ในวิทยาเขตนี้';
-    end if;
-  end if;
-  return new;
-end $$;
-drop trigger if exists buildings_scope_guard on public.buildings;
-create trigger buildings_scope_guard before insert or update on public.buildings
-  for each row execute function app.buildings_scope_guard();
-
--- ประวัติการใช้งาน
-do $$
-declare t text;
-begin
-  foreach t in array array['campuses','zones'] loop
-    execute format('drop trigger if exists %I on public.%I', t || '_audit', t);
-    execute format('create trigger %I after insert or update or delete on public.%I
-                    for each row execute function app.audit_trigger()', t || '_audit', t);
-  end loop;
-end $$;
-
 -- ---------------------------------------------------------------------
 -- 3. สิทธิ์ (RLS)
 -- ---------------------------------------------------------------------
-alter table public.campuses enable row level security;
-alter table public.zones enable row level security;
-grant select, insert, update, delete on public.campuses, public.zones to authenticated;
-revoke all on public.campuses, public.zones from anon;
-
-drop policy if exists campuses_read on public.campuses;
-drop policy if exists campuses_write on public.campuses;
-drop policy if exists zones_read on public.zones;
-drop policy if exists zones_write on public.zones;
-create policy campuses_read on public.campuses for select to authenticated using (true);
-create policy campuses_write on public.campuses for all to authenticated
-  using ((select app.is_central())) with check ((select app.is_central()));
-create policy zones_read on public.zones for select to authenticated using (true);
-create policy zones_write on public.zones for all to authenticated
-  using ((select app.is_central())) with check ((select app.is_central()));
-
 -- มองเห็นอาคาร (ผังชั้น): มีสิทธิ์ในหน่วยงานเจ้าของอาคาร หรือมองเห็นจุดตรวจใดในอาคารนั้น
 create or replace function app.can_view_building(p_building uuid) returns boolean
 language sql stable security definer set search_path = public as $$
@@ -2560,11 +2491,9 @@ drop trigger if exists findings_default_pin on public.findings;
 create trigger findings_default_pin before insert on public.findings for each row execute function app.findings_default_pin();
 
 -- ---------------------------------------------------------------------
--- 6. Views: เพิ่มข้อมูลสโคปพื้นที่ (วิทยาเขต → โซน → อาคาร → ชั้น → ห้อง) และหมุดบนผัง
+-- 6. Views: เพิ่มข้อมูลพื้นที่ (อาคาร → ชั้น → ห้อง) และหมุดบนผัง
 --    (สร้างใหม่เพราะ f.* / i.* มีคอลัมน์เพิ่ม — ฟังก์ชันแดชบอร์ดถูกสร้างใหม่ด้านล่าง)
 -- ---------------------------------------------------------------------
-drop view if exists public.v_inspection_tasks, public.v_findings, public.v_assets, public.v_inspections;
-
 create view public.v_inspection_tasks with (security_invoker = true) as
 select t.id, t.plan_id, t.asset_id, t.organization_id, t.template_id, t.assignee_id,
        t.period_start, t.due_on, t.status, t.completed_inspection_id, t.completed_at, t.created_at,
@@ -2579,7 +2508,7 @@ select t.id, t.plan_id, t.asset_id, t.organization_id, t.template_id, t.assignee
             when t.period_start <= app.today() then 'pending'
             else 'upcoming' end as display_status,
        (t.status = 'completed' and (t.completed_at at time zone 'Asia/Bangkok')::date > t.due_on) as completed_late,
-       b.campus_id, b.zone_id, a.location_id
+       a.location_id
   from public.inspection_tasks t
   join public.assets a on a.id = t.asset_id
   join public.asset_types aty on aty.id = a.asset_type_id
@@ -2601,7 +2530,7 @@ select f.*,
             else 'closed' end as remediation_group,
        (f.status in ('assigned','in_progress') and f.due_on < app.today()) as is_overdue,
        (f.status <> 'closed' and f.severity in ('high','critical')) as is_urgent_open,
-       b.campus_id, b.zone_id, a.floor_id, a.location_id, fl.name as floor_name, l.name as location_name,
+       a.floor_id, a.location_id, fl.name as floor_name, l.name as location_name,
        a.plan_x as asset_plan_x, a.plan_y as asset_plan_y
   from public.findings f
   join public.assets a on a.id = f.asset_id
@@ -2618,15 +2547,13 @@ select a.*, aty.name as asset_type_name, aty.category, aty.tracks_expiry,
        b.name as building_name, fl.name as floor_name, l.name as location_name,
        o.name_th as organization_name, o.ancestors as org_ancestors, p.full_name as responsible_name,
        (select count(*) from public.findings f where f.asset_id = a.id and f.status <> 'closed') as open_findings,
-       b.code as building_code, b.campus_id, b.zone_id, c.name as campus_name, z.name as zone_name, fl.level as floor_level,
+       b.code as building_code, fl.level as floor_level,
        (select count(*) from public.findings f where f.asset_id = a.id and f.status <> 'closed' and f.severity in ('high','critical')) as urgent_findings,
        (select count(*) from public.inspection_tasks t where t.asset_id = a.id and t.status = 'open' and t.due_on < app.today()) as overdue_tasks
   from public.assets a
   join public.asset_types aty on aty.id = a.asset_type_id
   join public.buildings b on b.id = a.building_id
   join public.organizations o on o.id = a.organization_id
-  left join public.campuses c on c.id = b.campus_id
-  left join public.zones z on z.id = b.zone_id
   left join public.floors fl on fl.id = a.floor_id
   left join public.locations l on l.id = a.location_id
   left join public.profiles p on p.id = a.responsible_user_id;
@@ -2635,7 +2562,7 @@ create view public.v_inspections with (security_invoker = true) as
 select i.*, a.code as asset_code, a.name as asset_name, a.building_id, aty.category,
        b.name as building_name, o.name_th as organization_name, o.ancestors as org_ancestors,
        p.full_name as inspector_name, ct.name as template_name, cv.version_no, cv.is_expert_review_draft,
-       b.campus_id, b.zone_id, a.floor_id
+       a.floor_id
   from public.inspections i
   join public.assets a on a.id = i.asset_id
   join public.asset_types aty on aty.id = a.asset_type_id
@@ -2649,7 +2576,7 @@ grant select on public.v_inspection_tasks, public.v_findings, public.v_assets, p
 revoke all on public.v_inspection_tasks, public.v_findings, public.v_assets, public.v_inspections from anon;
 
 -- ---------------------------------------------------------------------
--- 7. ฟังก์ชันแดชบอร์ด: เพิ่มตัวกรองสโคป p_campus / p_zone / p_floor
+-- 7. ฟังก์ชันแดชบอร์ด: เพิ่มตัวกรองชั้น p_floor
 -- ---------------------------------------------------------------------
 drop function if exists public.dashboard_kpis(date, date, uuid, uuid, text, uuid);
 drop function if exists public.dashboard_annual(int, text, uuid, uuid, text, uuid);
@@ -2661,7 +2588,7 @@ drop function if exists public.dashboard_findings_by_category(date, date, uuid, 
 create or replace function public.dashboard_kpis(
   p_from date, p_to date,
   p_org uuid default null, p_building uuid default null, p_category text default null, p_assignee uuid default null,
-  p_campus uuid default null, p_zone uuid default null, p_floor uuid default null)
+  p_floor uuid default null)
 returns jsonb
 language sql stable security invoker set search_path = public as $$
 with
@@ -2670,7 +2597,7 @@ tasks as (
    where t.status <> 'cancelled' and t.due_on between p_from and p_to
      and (p_org is null or p_org = any(t.org_ancestors))
      and (p_building is null or t.building_id = p_building)
-     and (p_campus is null or t.campus_id = p_campus) and (p_zone is null or t.zone_id = p_zone) and (p_floor is null or t.floor_id = p_floor)
+     and (p_floor is null or t.floor_id = p_floor)
      and (p_category is null or t.category = p_category)
      and (p_assignee is null or t.assignee_id = p_assignee)
 ),
@@ -2682,7 +2609,7 @@ resp as (
      and (i.submitted_at at time zone 'Asia/Bangkok')::date between p_from and p_to
      and (p_org is null or p_org = any(i.org_ancestors))
      and (p_building is null or i.building_id = p_building)
-     and (p_campus is null or i.campus_id = p_campus) and (p_zone is null or i.zone_id = p_zone) and (p_floor is null or i.floor_id = p_floor)
+     and (p_floor is null or i.floor_id = p_floor)
      and (p_category is null or i.category = p_category)
      and (p_assignee is null or i.inspector_id = p_assignee)
 ),
@@ -2690,7 +2617,7 @@ fnd as (
   select * from public.v_findings f
    where (p_org is null or p_org = any(f.org_ancestors))
      and (p_building is null or f.building_id = p_building)
-     and (p_campus is null or f.campus_id = p_campus) and (p_zone is null or f.zone_id = p_zone) and (p_floor is null or f.floor_id = p_floor)
+     and (p_floor is null or f.floor_id = p_floor)
      and (p_category is null or f.category = p_category)
      and (p_assignee is null or f.assignee_id = p_assignee)
 ),
@@ -2704,7 +2631,7 @@ select jsonb_build_object(
                      where a.status = 'active'
                        and (p_org is null or p_org = any(a.org_ancestors))
                        and (p_building is null or a.building_id = p_building)
-     and (p_campus is null or a.campus_id = p_campus) and (p_zone is null or a.zone_id = p_zone) and (p_floor is null or a.floor_id = p_floor)
+     and (p_floor is null or a.floor_id = p_floor)
                        and (p_category is null or a.category = p_category)),
   'tasks', (select jsonb_build_object(
       'due', count(*),
@@ -2753,7 +2680,7 @@ $$;
 create or replace function public.dashboard_annual(
   p_year int, p_group text default 'category',
   p_org uuid default null, p_building uuid default null, p_category text default null, p_assignee uuid default null,
-  p_campus uuid default null, p_zone uuid default null, p_floor uuid default null)
+  p_floor uuid default null)
 returns table (group_key text, group_label text, month int, due bigint, done bigint, overdue bigint)
 language sql stable security invoker set search_path = public as $$
   select case when p_group = 'asset' then t.asset_id::text else t.category end,
@@ -2765,7 +2692,7 @@ language sql stable security invoker set search_path = public as $$
      and t.due_on between make_date(p_year, 1, 1) and make_date(p_year, 12, 31)
      and (p_org is null or p_org = any(t.org_ancestors))
      and (p_building is null or t.building_id = p_building)
-     and (p_campus is null or t.campus_id = p_campus) and (p_zone is null or t.zone_id = p_zone) and (p_floor is null or t.floor_id = p_floor)
+     and (p_floor is null or t.floor_id = p_floor)
      and (p_category is null or t.category = p_category)
      and (p_assignee is null or t.assignee_id = p_assignee)
    group by 1, 2, 3
@@ -2776,7 +2703,7 @@ $$;
 create or replace function public.dashboard_trend(
   p_from date, p_to date,
   p_org uuid default null, p_building uuid default null, p_category text default null, p_assignee uuid default null,
-  p_campus uuid default null, p_zone uuid default null, p_floor uuid default null)
+  p_floor uuid default null)
 returns table (month_start date, tasks_due bigint, tasks_done bigint, findings_opened bigint, findings_closed bigint)
 language sql stable security invoker set search_path = public as $$
   with months as (
@@ -2787,7 +2714,7 @@ language sql stable security invoker set search_path = public as $$
       from public.v_inspection_tasks
      where status <> 'cancelled' and due_on between date_trunc('month', p_from)::date and p_to
        and (p_org is null or p_org = any(org_ancestors)) and (p_building is null or building_id = p_building)
-     and (p_campus is null or campus_id = p_campus) and (p_zone is null or zone_id = p_zone) and (p_floor is null or floor_id = p_floor)
+     and (p_floor is null or floor_id = p_floor)
        and (p_category is null or category = p_category) and (p_assignee is null or assignee_id = p_assignee)
      group by 1
   ),
@@ -2795,7 +2722,7 @@ language sql stable security invoker set search_path = public as $$
     select date_trunc('month', (created_at at time zone 'Asia/Bangkok'))::date m, count(*) n
       from public.v_findings
      where (p_org is null or p_org = any(org_ancestors)) and (p_building is null or building_id = p_building)
-     and (p_campus is null or campus_id = p_campus) and (p_zone is null or zone_id = p_zone) and (p_floor is null or floor_id = p_floor)
+     and (p_floor is null or floor_id = p_floor)
        and (p_category is null or category = p_category) and (p_assignee is null or assignee_id = p_assignee)
      group by 1
   ),
@@ -2804,7 +2731,7 @@ language sql stable security invoker set search_path = public as $$
       from public.v_findings
      where status = 'closed'
        and (p_org is null or p_org = any(org_ancestors)) and (p_building is null or building_id = p_building)
-     and (p_campus is null or campus_id = p_campus) and (p_zone is null or zone_id = p_zone) and (p_floor is null or floor_id = p_floor)
+     and (p_floor is null or floor_id = p_floor)
        and (p_category is null or category = p_category) and (p_assignee is null or assignee_id = p_assignee)
      group by 1
   )
@@ -2817,7 +2744,7 @@ $$;
 create or replace function public.dashboard_findings_by_category(
   p_from date, p_to date,
   p_org uuid default null, p_building uuid default null, p_category text default null, p_assignee uuid default null,
-  p_campus uuid default null, p_zone uuid default null, p_floor uuid default null)
+  p_floor uuid default null)
 returns table (category text, total bigint, open bigint, closed bigint, urgent bigint)
 language sql stable security invoker set search_path = public as $$
   select category, count(*), count(*) filter (where status <> 'closed'), count(*) filter (where status = 'closed'),
@@ -2825,29 +2752,28 @@ language sql stable security invoker set search_path = public as $$
     from public.v_findings
    where (created_at at time zone 'Asia/Bangkok')::date between p_from and p_to
      and (p_org is null or p_org = any(org_ancestors)) and (p_building is null or building_id = p_building)
-     and (p_campus is null or campus_id = p_campus) and (p_zone is null or zone_id = p_zone) and (p_floor is null or floor_id = p_floor)
+     and (p_floor is null or floor_id = p_floor)
      and (p_category is null or category = p_category) and (p_assignee is null or assignee_id = p_assignee)
    group by category
    order by count(*) desc
 $$;
 
 
-grant execute on function public.dashboard_kpis(date, date, uuid, uuid, text, uuid, uuid, uuid, uuid),
-  public.dashboard_annual(int, text, uuid, uuid, text, uuid, uuid, uuid, uuid),
-  public.dashboard_trend(date, date, uuid, uuid, text, uuid, uuid, uuid, uuid),
-  public.dashboard_findings_by_category(date, date, uuid, uuid, text, uuid, uuid, uuid, uuid) to authenticated;
-revoke execute on function public.dashboard_kpis(date, date, uuid, uuid, text, uuid, uuid, uuid, uuid),
-  public.dashboard_annual(int, text, uuid, uuid, text, uuid, uuid, uuid, uuid),
-  public.dashboard_trend(date, date, uuid, uuid, text, uuid, uuid, uuid, uuid),
-  public.dashboard_findings_by_category(date, date, uuid, uuid, text, uuid, uuid, uuid, uuid) from public, anon;
+grant execute on function public.dashboard_kpis(date, date, uuid, uuid, text, uuid, uuid),
+  public.dashboard_annual(int, text, uuid, uuid, text, uuid, uuid),
+  public.dashboard_trend(date, date, uuid, uuid, text, uuid, uuid),
+  public.dashboard_findings_by_category(date, date, uuid, uuid, text, uuid, uuid) to authenticated;
+revoke execute on function public.dashboard_kpis(date, date, uuid, uuid, text, uuid, uuid),
+  public.dashboard_annual(int, text, uuid, uuid, text, uuid, uuid),
+  public.dashboard_trend(date, date, uuid, uuid, text, uuid, uuid),
+  public.dashboard_findings_by_category(date, date, uuid, uuid, text, uuid, uuid) from public, anon;
 
 -- ---------------------------------------------------------------------
 -- 8. ภาพรวมความปลอดภัยรายอาคาร (ผ่าน RLS: นับเฉพาะข้อมูลที่ผู้ดูมีสิทธิ์)
 -- ---------------------------------------------------------------------
 create or replace function public.building_safety_overview(
-  p_from date, p_to date, p_campus uuid default null, p_zone uuid default null, p_org uuid default null)
-returns table (building_id uuid, building_code text, building_name text, organization_id uuid,
-               campus_id uuid, campus_name text, zone_id uuid, zone_name text,
+  p_from date, p_to date, p_org uuid default null)
+returns table (building_id uuid, building_code text, building_name text, organization_id uuid, organization_name text,
                latitude numeric, longitude numeric, floors bigint, floors_with_plan bigint,
                assets_active bigint, assets_pinned bigint, tasks_due bigint, tasks_done bigint, tasks_overdue bigint,
                findings_open bigint, findings_urgent bigint, last_inspected_at timestamptz)
@@ -2869,7 +2795,7 @@ language sql stable security invoker set search_path = public as $$
      where (p_org is null or p_org = any(vf.org_ancestors))
      group by vf.building_id
   )
-  select b.id, b.code, b.name, b.organization_id, b.campus_id, c.name, b.zone_id, z.name, b.latitude, b.longitude,
+  select b.id, b.code, b.name, b.organization_id, o.name_th, b.latitude, b.longitude,
          (select count(*) from public.floors fl where fl.building_id = b.id),
          (select count(*) from public.floors fl where fl.building_id = b.id and fl.plan_path is not null),
          (select count(*) from a where a.building_id = b.id),
@@ -2878,16 +2804,13 @@ language sql stable security invoker set search_path = public as $$
          coalesce(f.open_n, 0), coalesce(f.urgent_n, 0),
          (select max(a.last_inspected_at) from a where a.building_id = b.id)
     from public.buildings b
-    left join public.campuses c on c.id = b.campus_id
-    left join public.zones z on z.id = b.zone_id
+    join public.organizations o on o.id = b.organization_id
     left join t on t.building_id = b.id
     left join f on f.building_id = b.id
    where b.is_active
-     and (p_campus is null or b.campus_id = p_campus)
-     and (p_zone is null or b.zone_id = p_zone)
      and (exists (select 1 from a where a.building_id = b.id) or app.can_view_building(b.id))
      and (p_org is null or exists (select 1 from a where a.building_id = b.id) or b.organization_id = p_org)
-   order by c.sort_order nulls last, c.name nulls last, z.sort_order nulls last, z.name nulls last, b.code
+   order by o.code, b.code
 $$;
-grant execute on function public.building_safety_overview(date, date, uuid, uuid, uuid) to authenticated;
-revoke execute on function public.building_safety_overview(date, date, uuid, uuid, uuid) from public, anon;
+grant execute on function public.building_safety_overview(date, date, uuid) to authenticated;
+revoke execute on function public.building_safety_overview(date, date, uuid) from public, anon;

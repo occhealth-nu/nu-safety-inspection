@@ -15,7 +15,7 @@ export default async function PrintReport({ params, searchParams }: { params: Pr
   const sp = await searchParams;
   const def = presetRange("ytd");
   const ok = (v?: string) => !!v && /^\d{4}-\d{2}-\d{2}$/.test(v);
-  const f = { from: ok(sp.from) ? sp.from! : def.from, to: ok(sp.to) ? sp.to! : def.to, org: sp.org, campus: sp.campus, zone: sp.zone, building: sp.building, category: sp.category };
+  const f = { from: ok(sp.from) ? sp.from! : def.from, to: ok(sp.to) ? sp.to! : def.to, org: sp.org, building: sp.building, category: sp.category };
   const s = await getAppSettings();
   let r: Awaited<ReturnType<typeof buildReport>>;
   try { r = await buildReport(type, f); } catch { return <ErrorState message="สร้างรายงานไม่สำเร็จ" retryHref="/reports" />; }

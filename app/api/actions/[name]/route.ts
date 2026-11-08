@@ -30,7 +30,7 @@ const FORM_ACTIONS: Record<string, FormFn> = {
   saveNotificationSettings: admin.saveNotificationSettings, saveBranding: admin.saveBranding,
   saveItem: checklists.saveItem, saveVersionMeta: checklists.saveVersionMeta, createTemplate: checklists.createTemplate,
   saveAsset: assets.saveAsset, changePassword: account.changePassword,
-  saveCampus: admin.saveCampus, createZone: admin.createZone, saveBuildingLocation: admin.saveBuildingLocation, saveGeoSettings: admin.saveGeoSettings,
+  saveBuildingLocation: admin.saveBuildingLocation, saveGeoSettings: admin.saveGeoSettings,
 };
 const ARG_ACTIONS: Record<string, ArgFn> = {
   startWork: findings.startWork, saveInspectionDraft: inspection.saveInspectionDraft, submitInspection: inspection.submitInspection,

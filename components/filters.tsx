@@ -1,19 +1,17 @@
 import { CATEGORY_LABELS } from "@/lib/labels";
 import { buttonClass, inputClass } from "@/components/ui";
-import type { Building, Campus, Organization, Zone } from "@/lib/types";
+import type { Building, Organization } from "@/lib/types";
 
-export interface FilterValues { preset?: string; from?: string; to?: string; org?: string; campus?: string; zone?: string; building?: string; category?: string; assignee?: string; year?: string }
+export interface FilterValues { preset?: string; from?: string; to?: string; org?: string; building?: string; category?: string; assignee?: string; year?: string }
 
 /** แถบตัวกรองแถวเดียว (GET form — ลิงก์แชร์ได้ และทำงานได้แม้ไม่มี JavaScript) */
-type FilterKey = "period" | "campus" | "zone" | "building" | "org" | "category" | "assignee" | "year";
+type FilterKey = "period" | "building" | "org" | "category" | "assignee" | "year";
 
-/** ตัวกรองสโคปพื้นที่เรียงจากใหญ่ไปเล็ก: วิทยาเขต → โซน → อาคาร (เลือกโซนแล้วรายการอาคารแสดงเฉพาะโซนนั้นหลังกรอง) */
-export function FilterBar({ values, orgs, buildings, people, campuses = [], zones = [], show = ["period", "campus", "zone", "building", "org", "category", "assignee"], action }: {
+/** แถบตัวกรองแถวเดียว (GET form — ลิงก์แชร์ได้ และทำงานได้แม้ไม่มี JavaScript) */
+export function FilterBar({ values, orgs, buildings, people, show = ["period", "building", "org", "category", "assignee"], action }: {
   values: FilterValues; orgs: Organization[]; buildings: Building[]; people?: { id: string; full_name: string }[];
-  campuses?: Campus[]; zones?: Zone[]; show?: FilterKey[]; action?: string;
+  show?: FilterKey[]; action?: string;
 }) {
-  const zoneList = zones.filter((z) => !values.campus || z.campus_id === values.campus);
-  const buildingList = buildings.filter((b) => (!values.campus || b.campus_id === values.campus) && (!values.zone || b.zone_id === values.zone));
   return (
     <form method="get" action={action} className="mb-5 grid grid-cols-2 gap-2 rounded-xl border border-gray-200 bg-white p-3 sm:flex sm:flex-wrap sm:items-end print:hidden">
       {show.includes("period") && (
@@ -39,27 +37,11 @@ export function FilterBar({ values, orgs, buildings, people, campuses = [], zone
           </select>
         </label>
       )}
-      {show.includes("campus") && campuses.length > 0 && (
-        <label className="text-xs text-gray-600 sm:w-48">วิทยาเขต/พื้นที่
-          <select name="campus" defaultValue={values.campus ?? ""} className={inputClass}>
-            <option value="">ทุกวิทยาเขต</option>
-            {campuses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </label>
-      )}
-      {show.includes("zone") && zones.length > 0 && (
-        <label className="text-xs text-gray-600 sm:w-48">โซน
-          <select name="zone" defaultValue={values.zone ?? ""} className={inputClass}>
-            <option value="">ทุกโซน</option>
-            {zoneList.map((z) => <option key={z.id} value={z.id}>{z.name}</option>)}
-          </select>
-        </label>
-      )}
       {show.includes("building") && (
         <label className="text-xs text-gray-600 sm:w-44">อาคาร
           <select name="building" defaultValue={values.building ?? ""} className={inputClass}>
             <option value="">ทุกอาคาร</option>
-            {buildingList.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            {buildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         </label>
       )}

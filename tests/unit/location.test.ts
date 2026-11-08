@@ -35,7 +35,7 @@ describe("ตำแหน่งและหมุดบนผัง", () => {
     expect(buildingTone({ assets_active: 0, tasks_overdue: 0, findings_urgent: 0, findings_open: 0 })).toBe("muted");
     expect(buildingTone({ assets_active: 5, tasks_overdue: 1, findings_urgent: 0, findings_open: 0 })).toBe("danger");
   });
-  it("เส้นทางสโคปจากใหญ่ไปเล็ก", () => {
-    expect(scopePath(["วิทยาเขตหลัก", null, "อาคาร EN1", "ชั้น 2", ""])).toBe("วิทยาเขตหลัก › อาคาร EN1 › ชั้น 2");
+  it("เส้นทางพื้นที่จากใหญ่ไปเล็ก", () => {
+    expect(scopePath(["อาคาร EN1", null, "ชั้น 2", "ทางเดินหลัก", ""])).toBe("อาคาร EN1 › ชั้น 2 › ทางเดินหลัก");
   });
 });

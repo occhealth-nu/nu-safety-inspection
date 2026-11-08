@@ -1,7 +1,7 @@
 import { test, expect, type Browser, type BrowserContextOptions } from "@playwright/test";
 import path from "node:path";
 
-// ระบบตรวจสอบความปลอดภัยอาคาร: สโคปพื้นที่ (วิทยาเขต → โซน → อาคาร → ชั้น → ห้อง → จุดตรวจ) ผังชั้น หมุด และพิกัดผู้ตรวจ
+// ระบบตรวจสอบความปลอดภัยอาคาร: อาคาร → ชั้น → ห้อง → จุดตรวจ ผังชั้น หมุด และพิกัดผู้ตรวจ
 const PASS = process.env.DEMO_PASSWORD ?? "Demo-Only-Pass-2569";
 const PLAN = path.resolve(__dirname, "../manual/assets/plan-floor.png");
 // พิกัดอาคารตัวอย่าง EN1 ใน seed = 16.745300, 100.197400
@@ -38,23 +38,23 @@ async function inspectAllPass(page: import("@playwright/test").Page, failFirst: 
   }
 }
 
-test.describe.serial("อาคารและพื้นที่: สโคป ผังชั้น หมุด และพิกัด", () => {
+test.describe.serial("อาคารและพื้นที่: ผังชั้น หมุด และพิกัด", () => {
   let en1 = "";
   let findingUrl = "";
 
-  test("ภาพรวมรายอาคารจัดกลุ่ม วิทยาเขต → โซน และกรองตามโซนได้", async ({ browser }) => {
+  test("ภาพรวมรายอาคารจัดกลุ่มตามหน่วยงานเจ้าของ และกรองตามหน่วยงานได้", async ({ browser }) => {
     const page = await login(browser, "coordinator");
     await page.getByRole("navigation", { name: "เมนูหลัก" }).getByRole("link", { name: "อาคารและพื้นที่" }).click();
-    await expect(page.getByRole("heading", { name: /วิทยาเขตหลัก พิษณุโลก/ })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /โซนวิศวกรรมและวิทยาศาสตร์/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /คณะวิศวกรรมศาสตร์ \(ตัวอย่าง\)/ })).toBeVisible();
+    await expect(page.getByText("วิทยาเขต")).toHaveCount(0);
     await expect(page.locator("[data-building]")).toHaveCount(3);
     en1 = (await page.locator('[data-building="EN1"] a').first().getAttribute("href"))!.split("/").pop()!;
-    await page.getByLabel("โซน").selectOption({ label: "โซนสำนักงานกลาง (ตัวอย่าง)" });
+    await page.getByLabel("หน่วยงาน").selectOption("10000000-0000-0000-0000-000000000012");   // คณะวิทยาศาสตร์ (ตัวอย่าง)
     await page.getByRole("button", { name: "กรองข้อมูล" }).click();
     await expect(page.locator("[data-building]")).toHaveCount(1);
-    await expect(page.locator('[data-building="QS"]')).toBeVisible();
-    // ตัวกรองสโคปเดียวกันใช้กับแดชบอร์ด
-    await page.goto("/?zone=22000000-0000-0000-0000-000000000002");
+    await expect(page.locator('[data-building="SC2"]')).toBeVisible();
+    // แดชบอร์ดกรองตามอาคาร
+    await page.goto(`/?building=${en1}`);
     await expect(page.getByText("ความครอบคลุมการตรวจ", { exact: true })).toBeVisible();
     await page.context().close();
   });
@@ -151,7 +151,7 @@ test.describe.serial("อาคารและพื้นที่: สโค�
     await expect(sci.getByText("อาคารนี้อยู่นอกขอบเขตสิทธิ์ของคุณ")).toBeVisible();
     await sci.context().close();
     const page = await login(browser, "executive");
-    const res = await page.request.get("/api/reports/buildings?zone=22000000-0000-0000-0000-000000000001");
+    const res = await page.request.get("/api/reports/buildings");
     expect(res.status()).toBe(200);
     expect((await res.body()).subarray(0, 2).toString()).toBe("PK");
     await page.goto("/reports/print/buildings");

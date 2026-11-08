@@ -7,7 +7,7 @@ import { FloorPlan } from "@/components/location/floor-plan";
 import { assetPinTone, mapsUrl, scopePath } from "@/lib/location";
 import type { AssetRow } from "@/lib/types";
 
-/** การ์ด “ตำแหน่ง”: เส้นทางสโคป (วิทยาเขต › โซน › อาคาร › ชั้น › ห้อง) + ผังชั้นพร้อมหมุด + ลิงก์นำทาง */
+/** การ์ด “ตำแหน่ง”: เส้นทางพื้นที่ (อาคาร › ชั้น › ห้อง) + ผังชั้นพร้อมหมุด + ลิงก์นำทาง */
 export async function AssetLocationCard({ asset, compact }: { asset: AssetRow; compact?: boolean }) {
   const supabase = await createClient();
   const [floor, building] = await Promise.all([
@@ -22,7 +22,7 @@ export async function AssetLocationCard({ asset, compact }: { asset: AssetRow; c
   return (
     <Card title="ตำแหน่ง" actions={<Link href={`/buildings/${asset.building_id}?floor=${asset.floor_id ?? ""}&focus=${asset.id}`} className="text-sm text-brand underline">ดูในผังอาคาร</Link>}>
       <p className="mb-2 flex items-start gap-1 text-sm"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" aria-hidden />
-        {scopePath([asset.campus_name, asset.zone_name, asset.building_name, asset.floor_name, asset.location_name])}{asset.location_detail ? ` — ${asset.location_detail}` : ""}</p>
+        {scopePath([asset.building_name, asset.floor_name, asset.location_name])}{asset.location_detail ? ` — ${asset.location_detail}` : ""}</p>
       {asset.floor_id ? (
         <FloorPlan planUrl={path ? urls[path] ?? null : null} compact={compact}
           pins={pinned ? [{ id: asset.id, x: Number(asset.plan_x), y: Number(asset.plan_y), tone: assetPinTone(asset), label: `${asset.code} ${asset.name}`, highlight: true }] : []}
