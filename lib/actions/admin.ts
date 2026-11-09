@@ -110,7 +110,7 @@ const newUserSchema = z.object({
   email: z.string().trim().email("อีเมลไม่ถูกต้อง"),
   full_name: z.string().trim().min(2, "กรุณาระบุชื่อ-สกุล"),
   position: z.string().trim().optional(),
-  organization_id: z.string().uuid("กรุณาเลือกหน่วยงาน"),
+  organization_id: z.guid("กรุณาเลือกหน่วยงาน"),
   role: z.enum(["system_admin", "safety_coordinator", "org_admin", "inspector", "responsible", "verifier", "executive"]),
   // เว้นว่าง = ไม่ตั้งรหัสผ่าน ผู้ใช้เข้าสู่ระบบด้วยบัญชี Google ของมหาวิทยาลัยเท่านั้น
   password: z.string().optional().transform((p) => (p ? p : undefined))

@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { toActionError, type ActionResult } from "@/lib/errors";
 
 const responseSchema = z.array(z.object({
-  item_id: z.string().uuid(),
+  item_id: z.guid(),
   result: z.enum(["pass", "fail", "na"]).nullable().optional(),
   note: z.string().max(2000).nullable().optional(),
   na_reason: z.string().max(500).nullable().optional(),
@@ -32,7 +32,7 @@ const geoSchema = z.object({
 export async function submitInspection(inspectionId: string, responses: ResponseInput[], summary: string, clientSubmissionId: string, geo?: GeoInput | null)
   : Promise<ActionResult<{ inspection_id: string; already_submitted: boolean; findings: { id: string; finding_no: string }[]; score_pct: number | null }>> {
   const parsed = responseSchema.safeParse(responses);
-  if (!parsed.success || !z.string().uuid().safeParse(clientSubmissionId).success) return { ok: false, message: "ข้อมูลไม่ถูกต้อง" };
+  if (!parsed.success || !z.guid().safeParse(clientSubmissionId).success) return { ok: false, message: "ข้อมูลไม่ถูกต้อง" };
   const g = geoSchema.safeParse(geo);
   const supabase = await createClient();
   // พิกัดผู้ตรวจขณะส่งผล (ยืนยันการตรวจหน้างาน) — ไม่บังคับ บันทึกไม่ได้ก็ยังส่งผลตรวจได้

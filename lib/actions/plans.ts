@@ -5,16 +5,16 @@ import { toActionError, type ActionResult } from "@/lib/errors";
 
 const planSchema = z.object({
   name: z.string().trim().min(3, "กรุณาระบุชื่อแผน"),
-  organization_id: z.string().uuid("กรุณาเลือกหน่วยงาน"),
-  building_id: z.string().uuid().optional().or(z.literal("")),
-  asset_type_id: z.string().uuid().optional().or(z.literal("")),
-  template_id: z.string().uuid("กรุณาเลือกแบบตรวจ"),
+  organization_id: z.guid("กรุณาเลือกหน่วยงาน"),
+  building_id: z.guid().optional().or(z.literal("")),
+  asset_type_id: z.guid().optional().or(z.literal("")),
+  template_id: z.guid("กรุณาเลือกแบบตรวจ"),
   frequency: z.enum(["daily", "weekly", "monthly", "quarterly", "yearly", "custom"]),
   custom_interval_days: z.coerce.number().int().min(1).max(3650).optional().or(z.literal("")),
   start_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "กรุณาระบุวันเริ่ม"),
   end_on: z.string().optional(),
   due_within_days: z.coerce.number().int().min(1).optional().or(z.literal("")),
-  default_inspector_id: z.string().uuid().optional().or(z.literal("")),
+  default_inspector_id: z.guid().optional().or(z.literal("")),
 });
 
 export async function createPlan(_: unknown, form: FormData): Promise<ActionResult<{ id: string; generated: number }>> {
