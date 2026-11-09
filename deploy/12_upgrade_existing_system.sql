@@ -1,0 +1,1442 @@
+-- =====================================================================
+-- NU Safety Inspection — อัปเกรดระบบเดิม (ไม่ลบข้อมูล): ผังชั้น/พิกัด + อาคาร 204 อาคาร + ช่องทาง Google Sheets
+-- = ไฟล์ 05_upgrade_building_locations.sql + 06_import_nu_data.sql รวมกัน · รันซ้ำได้
+-- =====================================================================
+-- =====================================================================
+-- NU Safety Inspection — อัปเกรด: ระบบตรวจสอบความปลอดภัยอาคาร
+--   (อาคาร → ชั้น → ห้อง → จุดตรวจ + ผังชั้น + หมุดตำแหน่ง + พิกัด GPS)
+--
+-- ใช้กับฐานข้อมูลที่ติดตั้ง 01–04 ไปแล้ว (ระบบที่ใช้งานอยู่) — ข้อมูลเดิมไม่หาย
+-- วิธีใช้: Supabase → SQL Editor → New query → วางทั้งไฟล์ → Run
+--   * รันซ้ำได้อย่างปลอดภัย (ถ้ารันไม่ครบเพราะหลุด ให้รันใหม่ทั้งไฟล์)
+--   * เคยรันไฟล์นี้ฉบับก่อน (ที่มี "วิทยาเขต/โซน") แล้ว: รันฉบับนี้ซ้ำได้เลย ระบบจะลบวิทยาเขต/โซนออกให้
+--     ข้อมูลอาคาร ชั้น ห้อง ผังชั้น หมุด และพิกัดยังอยู่ครบ
+--   * ต้องเห็นข้อความ "Success. No rows returned" ด้านล่าง
+-- ติดตั้งระบบใหม่ทั้งหมด: ใช้ 01_install_database.sql (รวมไฟล์นี้แล้ว) ไม่ต้องรันไฟล์นี้ซ้ำ
+-- =====================================================================
+-- =====================================================================
+-- ระบบตรวจสอบความปลอดภัยอาคาร: ลำดับพื้นที่จากใหญ่ไปเล็ก + การระบุตำแหน่ง
+--
+--   อาคาร (buildings)  + พิกัด GPS
+--     └ ชั้น (floors)  + ภาพผังชั้น (bucket "floor-plans")
+--         └ ห้อง/พื้นที่ (locations)
+--             └ จุดตรวจ/อุปกรณ์ (assets) + หมุดบนผังชั้น (plan_x, plan_y) + พิกัด GPS (ไม่บังคับ)
+--                 └ ข้อบกพร่อง (findings) + หมุดตำแหน่งที่พบจริงบนผังชั้น
+--
+-- * หมุดบนผังเก็บเป็นร้อยละของความกว้าง/สูงภาพ (0–100) จึงไม่ขึ้นกับขนาดภาพหรือหน้าจอ
+-- * พิกัดผู้ตรวจบันทึกครั้งเดียวขณะส่งผลตรวจ เพื่อยืนยันว่าตรวจหน้างานจริง (ปิดได้ในหน้าตั้งค่า)
+-- * ตัวกรองแดชบอร์ดเพิ่ม p_floor (ชั้น) ทุกฟังก์ชัน (การเรียกแบบเดิมยังใช้ได้)
+-- * ไม่มีระดับวิทยาเขต/โซน — ถ้าเคยติดตั้งฉบับที่มีวิทยาเขต/โซน สคริปต์นี้ลบออกให้ (หัวข้อ 0)
+-- รันซ้ำได้ (idempotent) สำหรับฐานข้อมูลที่ติดตั้งแล้ว
+-- =====================================================================
+
+-- ---------------------------------------------------------------------
+-- 0. ยกเลิกระดับวิทยาเขต/โซน (สำหรับฐานข้อมูลที่เคยรันสคริปต์ฉบับก่อนหน้า — ฐานข้อมูลใหม่ข้ามได้)
+--    views/ฟังก์ชันที่อ้างถึงถูกลบแล้วสร้างใหม่ในหัวข้อ 6–8 ของไฟล์นี้
+-- ---------------------------------------------------------------------
+drop view if exists public.v_inspection_tasks, public.v_findings, public.v_assets, public.v_inspections;
+drop function if exists public.building_safety_overview(date, date, uuid, uuid, uuid);
+drop function if exists public.building_safety_overview(date, date, uuid);
+drop function if exists public.dashboard_kpis(date, date, uuid, uuid, text, uuid, uuid, uuid, uuid);
+drop function if exists public.dashboard_annual(int, text, uuid, uuid, text, uuid, uuid, uuid, uuid);
+drop function if exists public.dashboard_trend(date, date, uuid, uuid, text, uuid, uuid, uuid, uuid);
+drop function if exists public.dashboard_findings_by_category(date, date, uuid, uuid, text, uuid, uuid, uuid, uuid);
+drop trigger if exists buildings_scope_guard on public.buildings;
+drop function if exists app.buildings_scope_guard();
+alter table public.buildings drop column if exists zone_id, drop column if exists campus_id;
+drop table if exists public.zones, public.campuses;
+
+-- ---------------------------------------------------------------------
+-- 2. คอลัมน์ตำแหน่งในตารางเดิม
+-- ---------------------------------------------------------------------
+alter table public.buildings
+  add column if not exists latitude  numeric(9,6) check (latitude between -90 and 90),
+  add column if not exists longitude numeric(9,6) check (longitude between -180 and 180),
+  add column if not exists address   text;
+do $$ begin
+  alter table public.buildings add constraint buildings_latlng_pair check ((latitude is null) = (longitude is null));
+exception when duplicate_object then null; end $$;
+
+alter table public.floors
+  add column if not exists plan_path       text,
+  add column if not exists plan_updated_at timestamptz;
+
+alter table public.assets
+  add column if not exists plan_x    numeric(5,2) check (plan_x between 0 and 100),
+  add column if not exists plan_y    numeric(5,2) check (plan_y between 0 and 100),
+  add column if not exists latitude  numeric(9,6) check (latitude between -90 and 90),
+  add column if not exists longitude numeric(9,6) check (longitude between -180 and 180);
+do $$ begin
+  alter table public.assets add constraint assets_pin_pair check ((plan_x is null) = (plan_y is null));
+exception when duplicate_object then null; end $$;
+do $$ begin
+  -- หมุดบนผังต้องอ้างอิงชั้น
+  alter table public.assets add constraint assets_pin_needs_floor check (plan_x is null or floor_id is not null);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter table public.assets add constraint assets_latlng_pair check ((latitude is null) = (longitude is null));
+exception when duplicate_object then null; end $$;
+
+alter table public.findings
+  add column if not exists plan_x        numeric(5,2) check (plan_x between 0 and 100),
+  add column if not exists plan_y        numeric(5,2) check (plan_y between 0 and 100),
+  add column if not exists location_note text;
+do $$ begin
+  alter table public.findings add constraint findings_pin_pair check ((plan_x is null) = (plan_y is null));
+exception when duplicate_object then null; end $$;
+
+alter table public.inspections
+  add column if not exists geo_lat         numeric(9,6),
+  add column if not exists geo_lng         numeric(9,6),
+  add column if not exists geo_accuracy_m  numeric(8,1),
+  add column if not exists geo_distance_m  numeric(10,1),
+  add column if not exists geo_status      text check (geo_status in ('ok','far','no_reference','denied','unavailable','disabled')),
+  add column if not exists geo_captured_at timestamptz;
+
+alter table public.app_settings
+  add column if not exists geo_capture_enabled boolean not null default true,
+  add column if not exists geo_radius_m        int not null default 300 check (geo_radius_m between 20 and 5000);
+
+-- ---------------------------------------------------------------------
+-- 3. สิทธิ์ (RLS)
+-- ---------------------------------------------------------------------
+-- มองเห็นอาคาร (ผังชั้น): มีสิทธิ์ในหน่วยงานเจ้าของอาคาร หรือมองเห็นจุดตรวจใดในอาคารนั้น
+create or replace function app.can_view_building(p_building uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.buildings b where b.id = p_building and app.can_view_org(b.organization_id))
+      or exists (select 1 from public.assets a where a.building_id = p_building and a.organization_id = any(app.visible_org_ids()))
+$$;
+create or replace function app.can_manage_building(p_building uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.buildings b where b.id = p_building and app.can_manage_org(b.organization_id))
+$$;
+grant execute on function app.can_view_building(uuid), app.can_manage_building(uuid) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 4. ภาพผังชั้น: bucket private "floor-plans" path = floor/{floor_id}/{uuid}.{ext}
+-- ---------------------------------------------------------------------
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('floor-plans', 'floor-plans', false, 10485760, array['image/jpeg','image/png','image/webp'])
+on conflict (id) do update set public = false;
+
+create or replace function app.floor_of_plan_path(p_name text) returns uuid
+language plpgsql immutable as $$
+declare parts text[] := string_to_array(p_name, '/');
+begin
+  if parts[1] <> 'floor' or array_length(parts, 1) <> 3 or p_name like '%..%' then return null; end if;
+  return parts[2]::uuid;
+exception when others then return null;
+end $$;
+
+create or replace function app.floor_plan_can_read(p_name text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.floors f where f.id = app.floor_of_plan_path(p_name) and app.can_view_building(f.building_id))
+$$;
+create or replace function app.floor_plan_can_write(p_name text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.floors f where f.id = app.floor_of_plan_path(p_name) and app.can_manage_building(f.building_id))
+$$;
+grant execute on function app.floor_of_plan_path(text), app.floor_plan_can_read(text), app.floor_plan_can_write(text) to authenticated;
+
+drop policy if exists "nu_floor_plans_read" on storage.objects;
+drop policy if exists "nu_floor_plans_insert" on storage.objects;
+drop policy if exists "nu_floor_plans_delete" on storage.objects;
+create policy "nu_floor_plans_read" on storage.objects for select to authenticated
+  using (bucket_id = 'floor-plans' and app.floor_plan_can_read(name));
+create policy "nu_floor_plans_insert" on storage.objects for insert to authenticated
+  with check (bucket_id = 'floor-plans' and app.floor_plan_can_write(name));
+create policy "nu_floor_plans_delete" on storage.objects for delete to authenticated
+  using (bucket_id = 'floor-plans' and app.floor_plan_can_write(name));
+
+-- ---------------------------------------------------------------------
+-- 5. RPC ระบุตำแหน่ง
+-- ---------------------------------------------------------------------
+-- ระยะทางบนผิวโลก (เมตร) แบบ haversine
+create or replace function app.distance_m(lat1 numeric, lng1 numeric, lat2 numeric, lng2 numeric) returns numeric
+language sql immutable as $$
+  select round((2 * 6371000 * asin(sqrt(
+           power(sin(radians((lat2 - lat1)::float8) / 2), 2)
+         + cos(radians(lat1::float8)) * cos(radians(lat2::float8)) * power(sin(radians((lng2 - lng1)::float8) / 2), 2))))::numeric, 1)
+$$;
+
+-- ตั้ง/ล้างภาพผังชั้น (ไฟล์ต้องอยู่ใต้ floor/{floor_id}/ และผู้เรียกต้องดูแลอาคารนั้น)
+create or replace function public.set_floor_plan(p_floor_id uuid, p_path text) returns void
+language plpgsql security definer set search_path = public as $$
+declare v_me uuid := app.require_login(); f public.floors;
+begin
+  select * into f from public.floors where id = p_floor_id;
+  if not found then perform app.fail('NOT_FOUND', 'ไม่พบชั้น'); end if;
+  if not app.can_manage_building(f.building_id) then perform app.fail('FORBIDDEN', 'ไม่มีสิทธิ์จัดการผังชั้นของอาคารนี้'); end if;
+  if p_path is not null and app.floor_of_plan_path(p_path) is distinct from p_floor_id then
+    perform app.fail('INVALID_INPUT', 'ไฟล์ผังชั้นไม่ถูกต้อง');
+  end if;
+  update public.floors set plan_path = p_path, plan_updated_at = case when p_path is null then null else now() end where id = p_floor_id;
+end $$;
+
+-- ปักหมุดตำแหน่งข้อบกพร่องบนผังชั้น (ผู้ดูแลหน่วยงาน ผู้รับผิดชอบ หรือผู้ตรวจที่พบ)
+create or replace function public.set_finding_pin(p_finding_id uuid, p_x numeric, p_y numeric, p_note text default null) returns void
+language plpgsql security definer set search_path = public as $$
+declare v_me uuid := app.require_login(); f public.findings; v_floor uuid; v_inspector uuid;
+begin
+  select * into f from public.findings where id = p_finding_id;
+  if not found or not app.can_view_finding(p_finding_id) then perform app.fail('NOT_FOUND', 'ไม่พบข้อบกพร่อง'); end if;
+  select inspector_id into v_inspector from public.inspections where id = f.inspection_id;
+  if not (app.can_manage_org(f.organization_id) or coalesce(f.assignee_id = v_me, false) or coalesce(v_inspector = v_me, false)) then
+    perform app.fail('FORBIDDEN', 'ไม่มีสิทธิ์ระบุตำแหน่งข้อบกพร่องนี้');
+  end if;
+  if f.status = 'closed' then perform app.fail('INVALID_STATE', 'ข้อบกพร่องปิดงานแล้ว แก้ไขตำแหน่งไม่ได้'); end if;
+  select floor_id into v_floor from public.assets where id = f.asset_id;
+  if p_x is not null and v_floor is null then perform app.fail('INVALID_INPUT', 'จุดตรวจนี้ยังไม่ได้ระบุชั้น จึงปักหมุดบนผังไม่ได้'); end if;
+  if (p_x is null) <> (p_y is null) or p_x not between 0 and 100 or p_y not between 0 and 100 then
+    perform app.fail('INVALID_INPUT', 'ตำแหน่งบนผังไม่ถูกต้อง');
+  end if;
+  update public.findings set plan_x = p_x, plan_y = p_y, location_note = nullif(trim(coalesce(p_note, '')), '') where id = p_finding_id;
+  insert into public.corrective_actions (finding_id, actor_id, action_type, note)
+  values (p_finding_id, v_me, 'comment', 'ระบุตำแหน่งบนผังชั้น' || coalesce(': ' || nullif(trim(coalesce(p_note, '')), ''), ''));
+end $$;
+
+-- บันทึกพิกัดผู้ตรวจขณะส่งผล (เฉพาะฉบับร่างของตนเอง) และคำนวณระยะห่างจากจุดตรวจ/อาคาร
+create or replace function public.record_inspection_location(p_inspection_id uuid, p_lat numeric, p_lng numeric,
+                                                             p_accuracy numeric default null, p_status text default null)
+returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  v_me uuid := app.require_login(); i public.inspections; a public.assets; b public.buildings;
+  v_ref_lat numeric; v_ref_lng numeric; v_dist numeric; v_status text; v_radius int; v_enabled boolean;
+begin
+  select * into i from public.inspections where id = p_inspection_id for update;
+  if not found or i.inspector_id <> v_me then perform app.fail('FORBIDDEN', 'ไม่มีสิทธิ์บันทึกตำแหน่งของการตรวจนี้'); end if;
+  if i.status <> 'draft' then perform app.fail('ALREADY_SUBMITTED', 'ผลตรวจนี้ส่งแล้ว ไม่สามารถแก้ไขตำแหน่งได้'); end if;
+  select geo_capture_enabled, geo_radius_m into v_enabled, v_radius from public.app_settings where id = 1;
+  if not coalesce(v_enabled, true) then
+    update public.inspections set geo_lat = null, geo_lng = null, geo_accuracy_m = null, geo_distance_m = null,
+           geo_status = 'disabled', geo_captured_at = now() where id = i.id;
+    return jsonb_build_object('status', 'disabled');
+  end if;
+
+  if p_lat is null or p_lng is null then
+    v_status := case when p_status in ('denied','unavailable') then p_status else 'unavailable' end;
+    update public.inspections set geo_lat = null, geo_lng = null, geo_accuracy_m = null, geo_distance_m = null,
+           geo_status = v_status, geo_captured_at = now() where id = i.id;
+    return jsonb_build_object('status', v_status);
+  end if;
+  if p_lat not between -90 and 90 or p_lng not between -180 and 180 then perform app.fail('INVALID_INPUT', 'พิกัดไม่ถูกต้อง'); end if;
+
+  select * into a from public.assets where id = i.asset_id;
+  select * into b from public.buildings where id = a.building_id;
+  v_ref_lat := coalesce(a.latitude, b.latitude); v_ref_lng := coalesce(a.longitude, b.longitude);
+  if v_ref_lat is null then
+    v_status := 'no_reference';
+  else
+    v_dist := app.distance_m(p_lat, p_lng, v_ref_lat, v_ref_lng);
+    -- เผื่อความคลาดเคลื่อนของ GPS (สูงสุด 200 ม.)
+    v_status := case when v_dist <= v_radius + least(coalesce(p_accuracy, 0), 200) then 'ok' else 'far' end;
+  end if;
+  update public.inspections set geo_lat = round(p_lat, 6), geo_lng = round(p_lng, 6), geo_accuracy_m = round(p_accuracy, 1),
+         geo_distance_m = v_dist, geo_status = v_status, geo_captured_at = now() where id = i.id;
+  return jsonb_build_object('status', v_status, 'distance_m', v_dist, 'radius_m', v_radius);
+end $$;
+
+grant execute on function public.set_floor_plan(uuid, text), public.set_finding_pin(uuid, numeric, numeric, text),
+  public.record_inspection_location(uuid, numeric, numeric, numeric, text) to authenticated;
+revoke execute on function public.set_floor_plan(uuid, text), public.set_finding_pin(uuid, numeric, numeric, text),
+  public.record_inspection_location(uuid, numeric, numeric, numeric, text) from public, anon;
+
+-- ข้อบกพร่องใหม่: ใช้ตำแหน่งหมุดของจุดตรวจเป็นค่าเริ่มต้น (แก้ภายหลังด้วย set_finding_pin)
+create or replace function app.findings_default_pin() returns trigger
+language plpgsql as $$
+begin
+  if new.plan_x is null then
+    select a.plan_x, a.plan_y into new.plan_x, new.plan_y from public.assets a where a.id = new.asset_id;
+  end if;
+  return new;
+end $$;
+drop trigger if exists findings_default_pin on public.findings;
+create trigger findings_default_pin before insert on public.findings for each row execute function app.findings_default_pin();
+
+-- ---------------------------------------------------------------------
+-- 6. Views: เพิ่มข้อมูลพื้นที่ (อาคาร → ชั้น → ห้อง) และหมุดบนผัง
+--    (สร้างใหม่เพราะ f.* / i.* มีคอลัมน์เพิ่ม — ฟังก์ชันแดชบอร์ดถูกสร้างใหม่ด้านล่าง)
+-- ---------------------------------------------------------------------
+create view public.v_inspection_tasks with (security_invoker = true) as
+select t.id, t.plan_id, t.asset_id, t.organization_id, t.template_id, t.assignee_id,
+       t.period_start, t.due_on, t.status, t.completed_inspection_id, t.completed_at, t.created_at,
+       a.code as asset_code, a.name as asset_name, a.building_id, a.floor_id, a.location_detail,
+       a.asset_type_id, aty.category, aty.name as asset_type_name,
+       b.name as building_name, o.name_th as organization_name, o.ancestors as org_ancestors,
+       p.full_name as assignee_name, ct.name as template_name,
+       i.overall_result, i.fail_count, i.score_pct,
+       case when t.status = 'completed' then 'done'
+            when t.status = 'cancelled' then 'cancelled'
+            when t.due_on < app.today() then 'overdue'
+            when t.period_start <= app.today() then 'pending'
+            else 'upcoming' end as display_status,
+       (t.status = 'completed' and (t.completed_at at time zone 'Asia/Bangkok')::date > t.due_on) as completed_late,
+       a.location_id
+  from public.inspection_tasks t
+  join public.assets a on a.id = t.asset_id
+  join public.asset_types aty on aty.id = a.asset_type_id
+  join public.buildings b on b.id = a.building_id
+  join public.organizations o on o.id = t.organization_id
+  join public.checklist_templates ct on ct.id = t.template_id
+  left join public.profiles p on p.id = t.assignee_id
+  left join public.inspections i on i.id = t.completed_inspection_id;
+
+create view public.v_findings with (security_invoker = true) as
+select f.*,
+       a.code as asset_code, a.name as asset_name, a.building_id, a.location_detail,
+       aty.category, aty.name as asset_type_name, b.name as building_name,
+       o.name_th as organization_name, o.ancestors as org_ancestors,
+       p.full_name as assignee_name, ro.name_th as responsible_org_name,
+       case when f.status in ('open','assigned') then 'waiting'
+            when f.status = 'in_progress' then 'in_progress'
+            when f.status = 'pending_verification' then 'pending_verification'
+            else 'closed' end as remediation_group,
+       (f.status in ('assigned','in_progress') and f.due_on < app.today()) as is_overdue,
+       (f.status <> 'closed' and f.severity in ('high','critical')) as is_urgent_open,
+       a.floor_id, a.location_id, fl.name as floor_name, l.name as location_name,
+       a.plan_x as asset_plan_x, a.plan_y as asset_plan_y
+  from public.findings f
+  join public.assets a on a.id = f.asset_id
+  join public.asset_types aty on aty.id = a.asset_type_id
+  join public.buildings b on b.id = a.building_id
+  join public.organizations o on o.id = f.organization_id
+  left join public.floors fl on fl.id = a.floor_id
+  left join public.locations l on l.id = a.location_id
+  left join public.profiles p on p.id = f.assignee_id
+  left join public.organizations ro on ro.id = f.responsible_org_id;
+
+create view public.v_assets with (security_invoker = true) as
+select a.*, aty.name as asset_type_name, aty.category, aty.tracks_expiry,
+       b.name as building_name, fl.name as floor_name, l.name as location_name,
+       o.name_th as organization_name, o.ancestors as org_ancestors, p.full_name as responsible_name,
+       (select count(*) from public.findings f where f.asset_id = a.id and f.status <> 'closed') as open_findings,
+       b.code as building_code, fl.level as floor_level,
+       (select count(*) from public.findings f where f.asset_id = a.id and f.status <> 'closed' and f.severity in ('high','critical')) as urgent_findings,
+       (select count(*) from public.inspection_tasks t where t.asset_id = a.id and t.status = 'open' and t.due_on < app.today()) as overdue_tasks
+  from public.assets a
+  join public.asset_types aty on aty.id = a.asset_type_id
+  join public.buildings b on b.id = a.building_id
+  join public.organizations o on o.id = a.organization_id
+  left join public.floors fl on fl.id = a.floor_id
+  left join public.locations l on l.id = a.location_id
+  left join public.profiles p on p.id = a.responsible_user_id;
+
+create view public.v_inspections with (security_invoker = true) as
+select i.*, a.code as asset_code, a.name as asset_name, a.building_id, aty.category,
+       b.name as building_name, o.name_th as organization_name, o.ancestors as org_ancestors,
+       p.full_name as inspector_name, ct.name as template_name, cv.version_no, cv.is_expert_review_draft,
+       a.floor_id
+  from public.inspections i
+  join public.assets a on a.id = i.asset_id
+  join public.asset_types aty on aty.id = a.asset_type_id
+  join public.buildings b on b.id = a.building_id
+  join public.organizations o on o.id = i.organization_id
+  join public.checklist_versions cv on cv.id = i.checklist_version_id
+  join public.checklist_templates ct on ct.id = cv.template_id
+  left join public.profiles p on p.id = i.inspector_id;
+
+grant select on public.v_inspection_tasks, public.v_findings, public.v_assets, public.v_inspections to authenticated;
+revoke all on public.v_inspection_tasks, public.v_findings, public.v_assets, public.v_inspections from anon;
+
+-- ---------------------------------------------------------------------
+-- 7. ฟังก์ชันแดชบอร์ด: เพิ่มตัวกรองชั้น p_floor
+-- ---------------------------------------------------------------------
+drop function if exists public.dashboard_kpis(date, date, uuid, uuid, text, uuid);
+drop function if exists public.dashboard_annual(int, text, uuid, uuid, text, uuid);
+drop function if exists public.dashboard_trend(date, date, uuid, uuid, text, uuid);
+drop function if exists public.dashboard_findings_by_category(date, date, uuid, uuid, text, uuid);
+
+-- KPI หลัก (นิยามสูตรอยู่ใน docs/KPI_DEFINITIONS.md)
+-- ---------------------------------------------------------------------
+create or replace function public.dashboard_kpis(
+  p_from date, p_to date,
+  p_org uuid default null, p_building uuid default null, p_category text default null, p_assignee uuid default null,
+  p_floor uuid default null)
+returns jsonb
+language sql stable security invoker set search_path = public as $$
+with
+tasks as (
+  select * from public.v_inspection_tasks t
+   where t.status <> 'cancelled' and t.due_on between p_from and p_to
+     and (p_org is null or p_org = any(t.org_ancestors))
+     and (p_building is null or t.building_id = p_building)
+     and (p_floor is null or t.floor_id = p_floor)
+     and (p_category is null or t.category = p_category)
+     and (p_assignee is null or t.assignee_id = p_assignee)
+),
+resp as (
+  select r.result, i.id inspection_id, i.fail_count
+    from public.v_inspections i
+    join public.inspection_responses r on r.inspection_id = i.id
+   where i.status = 'submitted'
+     and (i.submitted_at at time zone 'Asia/Bangkok')::date between p_from and p_to
+     and (p_org is null or p_org = any(i.org_ancestors))
+     and (p_building is null or i.building_id = p_building)
+     and (p_floor is null or i.floor_id = p_floor)
+     and (p_category is null or i.category = p_category)
+     and (p_assignee is null or i.inspector_id = p_assignee)
+),
+fnd as (
+  select * from public.v_findings f
+   where (p_org is null or p_org = any(f.org_ancestors))
+     and (p_building is null or f.building_id = p_building)
+     and (p_floor is null or f.floor_id = p_floor)
+     and (p_category is null or f.category = p_category)
+     and (p_assignee is null or f.assignee_id = p_assignee)
+),
+closed_period as (
+  select * from fnd where status = 'closed' and (closed_at at time zone 'Asia/Bangkok')::date between p_from and p_to
+)
+select jsonb_build_object(
+  'generated_at', now(),
+  'period', jsonb_build_object('from', p_from, 'to', p_to),
+  'assets_active', (select count(*) from public.v_assets a
+                     where a.status = 'active'
+                       and (p_org is null or p_org = any(a.org_ancestors))
+                       and (p_building is null or a.building_id = p_building)
+     and (p_floor is null or a.floor_id = p_floor)
+                       and (p_category is null or a.category = p_category)),
+  'tasks', (select jsonb_build_object(
+      'due', count(*),
+      'done', count(*) filter (where display_status = 'done'),
+      'done_late', count(*) filter (where completed_late),
+      'not_done', count(*) filter (where display_status <> 'done'),
+      'upcoming', count(*) filter (where display_status = 'upcoming'),
+      'pending', count(*) filter (where display_status = 'pending'),
+      'overdue', count(*) filter (where display_status = 'overdue'),
+      'coverage_pct', case when count(*) > 0
+                           then round(count(*) filter (where display_status = 'done') * 100.0 / count(*), 1) end)
+     from tasks),
+  'results', (select jsonb_build_object(
+      'pass', count(*) filter (where result = 'pass'),
+      'fail', count(*) filter (where result = 'fail'),
+      'na', count(*) filter (where result = 'na'),
+      'pass_rate_pct', case when count(*) filter (where result in ('pass','fail')) > 0
+                            then round(count(*) filter (where result = 'pass') * 100.0
+                                       / count(*) filter (where result in ('pass','fail')), 1) end,
+      'inspections', count(distinct inspection_id),
+      'inspections_with_findings', count(distinct inspection_id) filter (where fail_count > 0))
+     from resp),
+  'findings', (select jsonb_build_object(
+      'open', count(*) filter (where status <> 'closed'),
+      'urgent_open', count(*) filter (where is_urgent_open),
+      'overdue', count(*) filter (where is_overdue),
+      'waiting', count(*) filter (where remediation_group = 'waiting'),
+      'unassigned', count(*) filter (where status = 'open'),
+      'in_progress', count(*) filter (where remediation_group = 'in_progress'),
+      'pending_verification', count(*) filter (where remediation_group = 'pending_verification'),
+      'recurring_open', count(*) filter (where status <> 'closed' and recurrence_of is not null),
+      'new_in_period', count(*) filter (where (created_at at time zone 'Asia/Bangkok')::date between p_from and p_to))
+     from fnd),
+  'closure', (select jsonb_build_object(
+      'closed', count(*),
+      'closed_with_due', count(*) filter (where due_on is not null),
+      'closed_on_time', count(*) filter (where due_on is not null and (closed_at at time zone 'Asia/Bangkok')::date <= due_on),
+      'on_time_pct', case when count(*) filter (where due_on is not null) > 0
+                          then round(count(*) filter (where due_on is not null and (closed_at at time zone 'Asia/Bangkok')::date <= due_on)
+                                     * 100.0 / count(*) filter (where due_on is not null), 1) end)
+     from closed_period)
+)
+$$;
+
+-- ตารางตรวจรายปี ม.ค.–ธ.ค.: จำนวนตรวจแล้ว / ถึงกำหนด ต่อเดือน (ปี ค.ศ. ใน parameter แสดงผลเป็น พ.ศ. ที่หน้าจอ)
+create or replace function public.dashboard_annual(
+  p_year int, p_group text default 'category',
+  p_org uuid default null, p_building uuid default null, p_category text default null, p_assignee uuid default null,
+  p_floor uuid default null)
+returns table (group_key text, group_label text, month int, due bigint, done bigint, overdue bigint)
+language sql stable security invoker set search_path = public as $$
+  select case when p_group = 'asset' then t.asset_id::text else t.category end,
+         case when p_group = 'asset' then t.asset_code || ' ' || t.asset_name else t.category end,
+         extract(month from t.due_on)::int,
+         count(*), count(*) filter (where t.display_status = 'done'), count(*) filter (where t.display_status = 'overdue')
+    from public.v_inspection_tasks t
+   where t.status <> 'cancelled'
+     and t.due_on between make_date(p_year, 1, 1) and make_date(p_year, 12, 31)
+     and (p_org is null or p_org = any(t.org_ancestors))
+     and (p_building is null or t.building_id = p_building)
+     and (p_floor is null or t.floor_id = p_floor)
+     and (p_category is null or t.category = p_category)
+     and (p_assignee is null or t.assignee_id = p_assignee)
+   group by 1, 2, 3
+   order by 2, 3
+$$;
+
+-- แนวโน้มรายเดือน
+create or replace function public.dashboard_trend(
+  p_from date, p_to date,
+  p_org uuid default null, p_building uuid default null, p_category text default null, p_assignee uuid default null,
+  p_floor uuid default null)
+returns table (month_start date, tasks_due bigint, tasks_done bigint, findings_opened bigint, findings_closed bigint)
+language sql stable security invoker set search_path = public as $$
+  with months as (
+    select generate_series(date_trunc('month', p_from)::date, date_trunc('month', p_to)::date, interval '1 month')::date m
+  ),
+  t as (
+    select date_trunc('month', due_on)::date m, count(*) due, count(*) filter (where display_status = 'done') done
+      from public.v_inspection_tasks
+     where status <> 'cancelled' and due_on between date_trunc('month', p_from)::date and p_to
+       and (p_org is null or p_org = any(org_ancestors)) and (p_building is null or building_id = p_building)
+     and (p_floor is null or floor_id = p_floor)
+       and (p_category is null or category = p_category) and (p_assignee is null or assignee_id = p_assignee)
+     group by 1
+  ),
+  f as (
+    select date_trunc('month', (created_at at time zone 'Asia/Bangkok'))::date m, count(*) n
+      from public.v_findings
+     where (p_org is null or p_org = any(org_ancestors)) and (p_building is null or building_id = p_building)
+     and (p_floor is null or floor_id = p_floor)
+       and (p_category is null or category = p_category) and (p_assignee is null or assignee_id = p_assignee)
+     group by 1
+  ),
+  c as (
+    select date_trunc('month', (closed_at at time zone 'Asia/Bangkok'))::date m, count(*) n
+      from public.v_findings
+     where status = 'closed'
+       and (p_org is null or p_org = any(org_ancestors)) and (p_building is null or building_id = p_building)
+     and (p_floor is null or floor_id = p_floor)
+       and (p_category is null or category = p_category) and (p_assignee is null or assignee_id = p_assignee)
+     group by 1
+  )
+  select months.m, coalesce(t.due, 0), coalesce(t.done, 0), coalesce(f.n, 0), coalesce(c.n, 0)
+    from months left join t on t.m = months.m left join f on f.m = months.m left join c on c.m = months.m
+   order by months.m
+$$;
+
+-- ข้อบกพร่องแยกประเภท (สร้างในช่วงเวลา)
+create or replace function public.dashboard_findings_by_category(
+  p_from date, p_to date,
+  p_org uuid default null, p_building uuid default null, p_category text default null, p_assignee uuid default null,
+  p_floor uuid default null)
+returns table (category text, total bigint, open bigint, closed bigint, urgent bigint)
+language sql stable security invoker set search_path = public as $$
+  select category, count(*), count(*) filter (where status <> 'closed'), count(*) filter (where status = 'closed'),
+         count(*) filter (where severity in ('high','critical'))
+    from public.v_findings
+   where (created_at at time zone 'Asia/Bangkok')::date between p_from and p_to
+     and (p_org is null or p_org = any(org_ancestors)) and (p_building is null or building_id = p_building)
+     and (p_floor is null or floor_id = p_floor)
+     and (p_category is null or category = p_category) and (p_assignee is null or assignee_id = p_assignee)
+   group by category
+   order by count(*) desc
+$$;
+
+
+grant execute on function public.dashboard_kpis(date, date, uuid, uuid, text, uuid, uuid),
+  public.dashboard_annual(int, text, uuid, uuid, text, uuid, uuid),
+  public.dashboard_trend(date, date, uuid, uuid, text, uuid, uuid),
+  public.dashboard_findings_by_category(date, date, uuid, uuid, text, uuid, uuid) to authenticated;
+revoke execute on function public.dashboard_kpis(date, date, uuid, uuid, text, uuid, uuid),
+  public.dashboard_annual(int, text, uuid, uuid, text, uuid, uuid),
+  public.dashboard_trend(date, date, uuid, uuid, text, uuid, uuid),
+  public.dashboard_findings_by_category(date, date, uuid, uuid, text, uuid, uuid) from public, anon;
+
+-- ---------------------------------------------------------------------
+-- 8. ภาพรวมความปลอดภัยรายอาคาร (ผ่าน RLS: นับเฉพาะข้อมูลที่ผู้ดูมีสิทธิ์)
+-- ---------------------------------------------------------------------
+create or replace function public.building_safety_overview(
+  p_from date, p_to date, p_org uuid default null)
+returns table (building_id uuid, building_code text, building_name text, organization_id uuid, organization_name text,
+               latitude numeric, longitude numeric, floors bigint, floors_with_plan bigint,
+               assets_active bigint, assets_pinned bigint, tasks_due bigint, tasks_done bigint, tasks_overdue bigint,
+               findings_open bigint, findings_urgent bigint, last_inspected_at timestamptz)
+language sql stable security invoker set search_path = public as $$
+  with a as (
+    select * from public.v_assets va
+     where va.status = 'active' and (p_org is null or p_org = any(va.org_ancestors))
+  ), t as (
+    select vt.building_id, count(*) due, count(*) filter (where vt.display_status = 'done') done,
+           count(*) filter (where vt.display_status = 'overdue') overdue
+      from public.v_inspection_tasks vt
+     where vt.status <> 'cancelled' and vt.due_on between p_from and p_to
+       and (p_org is null or p_org = any(vt.org_ancestors))
+     group by vt.building_id
+  ), f as (
+    select vf.building_id, count(*) filter (where vf.status <> 'closed') open_n,
+           count(*) filter (where vf.is_urgent_open) urgent_n
+      from public.v_findings vf
+     where (p_org is null or p_org = any(vf.org_ancestors))
+     group by vf.building_id
+  )
+  select b.id, b.code, b.name, b.organization_id, o.name_th, b.latitude, b.longitude,
+         (select count(*) from public.floors fl where fl.building_id = b.id),
+         (select count(*) from public.floors fl where fl.building_id = b.id and fl.plan_path is not null),
+         (select count(*) from a where a.building_id = b.id),
+         (select count(*) from a where a.building_id = b.id and a.plan_x is not null),
+         coalesce(t.due, 0), coalesce(t.done, 0), coalesce(t.overdue, 0),
+         coalesce(f.open_n, 0), coalesce(f.urgent_n, 0),
+         (select max(a.last_inspected_at) from a where a.building_id = b.id)
+    from public.buildings b
+    join public.organizations o on o.id = b.organization_id
+    left join t on t.building_id = b.id
+    left join f on f.building_id = b.id
+   where b.is_active
+     and (exists (select 1 from a where a.building_id = b.id) or app.can_view_building(b.id))
+     and (p_org is null or exists (select 1 from a where a.building_id = b.id) or b.organization_id = p_org)
+   order by o.code, b.code
+$$;
+grant execute on function public.building_safety_overview(date, date, uuid) to authenticated;
+revoke execute on function public.building_safety_overview(date, date, uuid) from public, anon;
+
+-- ให้ Supabase API โหลดรายการตาราง/ฟังก์ชันใหม่ทันที (ไม่ต้องรอ)
+notify pgrst, 'reload schema';
+
+-- =====================================================================
+-- NU Safety Inspection — นำเข้าหน่วยงาน 43 หน่วยงาน + อาคารทั้งมหาวิทยาลัย 204 อาคาร
+--   (เลขอาคาร ประเภทอาคาร หน่วยงานเจ้าของ — ตรวจและแก้ข้อมูลแล้ว ดู data/nu-buildings-changes.csv)
+-- และติดตั้งเครื่องมือนำเข้าผู้ใช้/ห้อง จากแบบฟอร์ม Excel
+-- วิธีใช้: Supabase → SQL Editor → New query → วางทั้งไฟล์ → Run  (รันหลังไฟล์ 01–02 และ 05)
+-- รันซ้ำได้: หน่วยงาน/อาคารที่มีอยู่แล้ว (รหัสหรือชื่อตรงกัน) จะไม่ถูกเพิ่มซ้ำ
+-- ไฟล์นี้สร้างอัตโนมัติจาก scripts/build-import-data.py — อย่าแก้ด้วยมือ
+-- =====================================================================
+
+-- ---------- ส่วนที่ 1: เครื่องมือนำเข้า (ตาราง user_preassignments + ฟังก์ชัน app.import_*) ----------
+-- =====================================================================
+-- นำเข้าข้อมูลจำนวนมากผ่าน Supabase SQL Editor (ใช้คู่กับไฟล์ Excel แบบฟอร์มนำเข้า)
+--   1) ลงทะเบียนผู้ใช้ล่วงหน้า (pre-registration) ด้วยอีเมล @nu.ac.th + หน่วยงาน + บทบาท
+--      ผู้ใช้กด "เข้าสู่ระบบด้วยบัญชี Google" ครั้งแรก → ระบบกำหนดหน่วยงาน/บทบาทให้อัตโนมัติ
+--      ถ้าผู้ใช้เคยเข้าระบบแล้ว (รอกำหนดสิทธิ์) → กำหนดให้ทันที
+--   2) เพิ่มหน่วยงาน อาคาร+ชั้น และห้อง/พื้นที่ ด้วยชื่อ/รหัส (ไม่ต้องรู้ uuid)
+-- ฟังก์ชัน app.import_* เรียกได้เฉพาะใน SQL Editor (บทบาท postgres) — ไม่เปิดให้ผู้ใช้ทั่วไปผ่าน API
+-- รันซ้ำได้ (idempotent)
+-- =====================================================================
+
+create table if not exists public.user_preassignments (
+  id               uuid primary key default gen_random_uuid(),
+  email            text not null check (email = lower(btrim(email)) and email like '%_@_%'),
+  full_name        text,
+  position         text,
+  organization_id  uuid not null references public.organizations(id) on delete cascade,   -- หน่วยงานที่ได้รับสิทธิ์ (unit)
+  home_organization_id uuid references public.organizations(id) on delete set null,    -- สังกัดของผู้ใช้ (faculty)
+  role             public.app_role not null,
+  created_at       timestamptz not null default now(),
+  applied_at       timestamptz,
+  applied_user_id  uuid references public.profiles(id) on delete set null,
+  unique (email, role, organization_id)
+);
+alter table public.user_preassignments add column if not exists home_organization_id uuid references public.organizations(id) on delete set null;
+create index if not exists user_preassignments_email_idx on public.user_preassignments(email) where applied_at is null;
+
+alter table public.user_preassignments enable row level security;
+drop policy if exists user_preassignments_read on public.user_preassignments;
+create policy user_preassignments_read on public.user_preassignments for select to authenticated
+  using (app.is_central() or app.has_role('{org_admin}', organization_id));
+revoke insert, update, delete on public.user_preassignments from anon, authenticated;
+
+-- ใช้รายการที่ลงทะเบียนไว้กับผู้ใช้ (เรียกจาก trigger และจาก app.import_user)
+create or replace function app.apply_user_preassignments(p_user uuid, p_email text) returns int
+language plpgsql security definer set search_path = public as $$
+declare r record; n int := 0;
+begin
+  if p_user is null or p_email is null then return 0; end if;
+  for r in select * from public.user_preassignments
+            where email = lower(btrim(p_email)) and applied_at is null order by created_at, id loop
+    update public.profiles
+       set organization_id = coalesce(organization_id, r.home_organization_id, r.organization_id),
+           full_name = coalesce(nullif(btrim(r.full_name), ''), full_name),
+           position  = coalesce(nullif(btrim(r.position), ''), position),
+           is_active = true
+     where id = p_user;
+    insert into public.role_assignments (user_id, role, organization_id)
+    values (p_user, r.role, r.organization_id) on conflict do nothing;
+    update public.user_preassignments set applied_at = now(), applied_user_id = p_user where id = r.id;
+    n := n + 1;
+  end loop;
+  if n > 0 then
+    update public.notifications set read_at = coalesce(read_at, now())
+     where dedupe_key = 'user_pending:' || p_user;
+  end if;
+  return n;
+end $$;
+revoke execute on function app.apply_user_preassignments(uuid, text) from public, anon, authenticated;
+
+create or replace function app.profiles_apply_preassignments() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  perform app.apply_user_preassignments(new.id, new.email);
+  return null;
+end $$;
+drop trigger if exists profiles_apply_preassignments on public.profiles;
+create trigger profiles_apply_preassignments after insert on public.profiles
+  for each row execute function app.profiles_apply_preassignments();
+
+-- หา id หน่วยงานจากรหัสหรือชื่อภาษาไทย (ตรงตัว ไม่สนช่องว่างหัวท้าย)
+create or replace function app.import_org_id(p_org text) returns uuid
+language plpgsql stable security definer set search_path = public as $$
+declare v uuid;
+begin
+  select id into v from public.organizations where upper(code) = upper(btrim(p_org));
+  if v is null then
+    select id into v from public.organizations where btrim(name_th) = btrim(p_org) order by is_active desc limit 1;
+  end if;
+  if v is null then raise exception 'ไม่พบหน่วยงาน "%" — ตรวจรหัส/ชื่อให้ตรงกับแท็บ หน่วยงาน', p_org; end if;
+  return v;
+end $$;
+
+-- ---------- หน่วยงาน ----------
+create or replace function app.import_organization(p_code text, p_name_th text, p_org_type text default 'faculty',
+                                                   p_name_en text default null, p_parent text default null) returns text
+language plpgsql security definer set search_path = public as $$
+declare v_parent uuid; v_id uuid;
+begin
+  v_parent := case when nullif(btrim(p_parent), '') is null
+                   then (select id from public.organizations where parent_id is null limit 1)
+                   else app.import_org_id(p_parent) end;
+  if v_parent is null then raise exception 'ยังไม่มีหน่วยงานราก — รันไฟล์ 02_starter_data.sql ก่อน'; end if;
+  select id into v_id from public.organizations where upper(code) = upper(btrim(p_code)) or btrim(name_th) = btrim(p_name_th)
+   order by (upper(code) = upper(btrim(p_code))) desc limit 1;
+  if v_id is not null then
+    update public.organizations set name_en = coalesce(name_en, nullif(btrim(p_name_en), '')) where id = v_id;
+    return 'มีอยู่แล้ว: ' || btrim(p_name_th);
+  end if;
+  insert into public.organizations (parent_id, code, name_th, name_en, org_type)
+  values (v_parent, upper(btrim(p_code)), btrim(p_name_th), nullif(btrim(p_name_en), ''), coalesce(nullif(btrim(p_org_type), ''), 'faculty'));
+  return 'เพิ่มแล้ว: ' || btrim(p_name_th);
+end $$;
+
+-- ---------- อาคาร + ชั้น ----------
+create or replace function app.import_building(p_org text, p_code text, p_name text, p_floors int default 0,
+                                               p_address text default null) returns text
+language plpgsql security definer set search_path = public as $$
+declare v_org uuid := app.import_org_id(p_org); v_id uuid; v_new boolean := false;
+begin
+  if nullif(btrim(p_code), '') is null or nullif(btrim(p_name), '') is null then raise exception 'ต้องระบุรหัสและชื่ออาคาร'; end if;
+  if coalesce(p_floors, 0) < 0 or coalesce(p_floors, 0) > 60 then raise exception 'จำนวนชั้นต้องอยู่ระหว่าง 0–60'; end if;
+  select id into v_id from public.buildings where upper(code) = upper(btrim(p_code));
+  if v_id is null then
+    insert into public.buildings (organization_id, code, name, address)
+    values (v_org, upper(btrim(p_code)), btrim(p_name), nullif(btrim(p_address), '')) returning id into v_id;
+    v_new := true;
+  end if;
+  insert into public.floors (building_id, name, level)
+  select v_id, 'ชั้น ' || g, g from generate_series(1, coalesce(p_floors, 0)) g
+  on conflict (building_id, name) do nothing;
+  return (case when v_new then 'เพิ่มแล้ว: ' else 'มีอยู่แล้ว (เติมชั้นที่ขาด): ' end) || upper(btrim(p_code)) || ' ' || btrim(p_name);
+end $$;
+
+-- ---------- ห้อง/พื้นที่ ----------
+create or replace function app.import_location(p_building text, p_floor text, p_name text, p_room_no text default null,
+                                               p_type text default null) returns text
+language plpgsql security definer set search_path = public as $$
+declare v_b uuid; v_f uuid; v_floor text; v_level int;
+begin
+  select id into v_b from public.buildings where upper(code) = upper(btrim(p_building));
+  if v_b is null then raise exception 'ไม่พบอาคารรหัส "%"', p_building; end if;
+  v_floor := btrim(p_floor);
+  if v_floor ~ '^[0-9]+$' then v_floor := 'ชั้น ' || v_floor; end if;
+  select id into v_f from public.floors where building_id = v_b and name = v_floor;
+  if v_f is null then
+    v_level := coalesce(nullif(regexp_replace(v_floor, '[^0-9-]', '', 'g'), '')::int, 1);
+    insert into public.floors (building_id, name, level) values (v_b, v_floor, v_level) returning id into v_f;
+  end if;
+  if nullif(btrim(p_type), '') is not null and btrim(p_type) not in ('laboratory','electrical','common','storage') then
+    raise exception 'ประเภทพื้นที่ "%" ไม่ถูกต้อง (laboratory, electrical, common, storage หรือเว้นว่าง)', p_type;
+  end if;
+  insert into public.locations (floor_id, name, room_no, location_type)
+  values (v_f, btrim(p_name), nullif(btrim(p_room_no), ''), nullif(btrim(p_type), ''))
+  on conflict (floor_id, name) do update set room_no = coalesce(excluded.room_no, public.locations.room_no),
+                                              location_type = coalesce(excluded.location_type, public.locations.location_type);
+  return 'บันทึกแล้ว: ' || upper(btrim(p_building)) || ' / ' || v_floor || ' / ' || btrim(p_name);
+end $$;
+
+-- ---------- ผู้ใช้ (ลงทะเบียนล่วงหน้า) ----------
+-- p_faculty = สังกัดของผู้ใช้, p_unit = หน่วยงานที่ได้รับสิทธิ์ตามบทบาท (เว้นว่าง = เท่ากับ p_faculty)
+create or replace function app.import_user(p_email text, p_full_name text, p_position text, p_faculty text,
+                                           p_unit text, p_role text) returns text
+language plpgsql security definer set search_path = public as $$
+declare v_email text := lower(btrim(p_email)); v_home uuid; v_org uuid; v_role public.app_role; v_user uuid; n int;
+begin
+  if v_email !~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' then raise exception 'อีเมล "%" ไม่ถูกต้อง', p_email; end if;
+  if not app.email_domain_allowed(v_email) then
+    raise exception 'อีเมล % ไม่อยู่ในโดเมนที่อนุญาต (ตั้งค่าระบบ › ภาพลักษณ์และการเข้าสู่ระบบ)', v_email;
+  end if;
+  v_home := app.import_org_id(p_faculty);
+  v_org  := case when nullif(btrim(p_unit), '') is null then v_home else app.import_org_id(p_unit) end;
+  begin v_role := btrim(p_role)::public.app_role;
+  exception when invalid_text_representation then
+    raise exception 'บทบาท "%" ไม่ถูกต้อง (system_admin, safety_coordinator, org_admin, inspector, responsible, verifier, executive)', p_role;
+  end;
+  insert into public.user_preassignments (email, full_name, position, organization_id, home_organization_id, role)
+  values (v_email, nullif(btrim(p_full_name), ''), nullif(btrim(p_position), ''), v_org, v_home, v_role)
+  on conflict (email, role, organization_id) do update
+     set full_name = excluded.full_name, position = excluded.position,
+         home_organization_id = excluded.home_organization_id;
+  select id into v_user from public.profiles where lower(email) = v_email;
+  if v_user is not null then
+    n := app.apply_user_preassignments(v_user, v_email);
+    return 'กำหนดสิทธิ์ทันที (มีบัญชีแล้ว): ' || v_email || ' → ' || v_role;
+  end if;
+  return 'ลงทะเบียนล่วงหน้าแล้ว: ' || v_email || ' → ' || v_role || ' (มีผลเมื่อเข้าสู่ระบบด้วย Google ครั้งแรก)';
+end $$;
+
+revoke execute on function app.import_org_id(text) from public, anon, authenticated;
+revoke execute on function app.import_organization(text, text, text, text, text) from public, anon, authenticated;
+revoke execute on function app.import_building(text, text, text, int, text) from public, anon, authenticated;
+revoke execute on function app.import_location(text, text, text, text, text) from public, anon, authenticated;
+drop function if exists app.import_user(text, text, text, text, text);
+revoke execute on function app.import_user(text, text, text, text, text, text) from public, anon, authenticated;
+
+-- ให้ Supabase API โหลดรายการตาราง/ฟังก์ชันใหม่ทันที (ไม่ต้องรอ)
+notify pgrst, 'reload schema';
+
+
+-- =====================================================================
+-- เครื่องมือเตรียมข้อมูลพร้อมใช้ (ใช้ใน Supabase SQL Editor เท่านั้น)
+--   app.generate_plan_tasks   — สร้างงานตรวจตามรอบ (แกนกลางของ generate_inspection_tasks ไม่ตรวจสิทธิ์)
+--   app.import_asset          — เพิ่มจุดตรวจด้วยรหัสอาคาร/ชั้น/ห้อง
+--   app.import_plan           — เพิ่มแผนการตรวจของหน่วยงาน แล้วสร้างงานตรวจทันที
+-- รันซ้ำได้ (idempotent)
+-- =====================================================================
+
+create or replace function app.generate_plan_tasks(p_plan_id uuid, p_until date default null) returns int
+language plpgsql security definer set search_path = public as $$
+declare
+  p public.inspection_plans;
+  d date; v_next date; v_due date; v_until date; v_total int := 0; n int; v_guard int := 0;
+begin
+  select * into p from public.inspection_plans where id = p_plan_id;
+  if not found then perform app.fail('NOT_FOUND', 'ไม่พบแผนการตรวจ'); end if;
+  if not p.is_active then perform app.fail('INVALID_STATE', 'แผนการตรวจนี้ปิดใช้งานแล้ว'); end if;
+  v_until := coalesce(p_until, (date_trunc('year', app.today()) + interval '1 year - 1 day')::date);
+  v_until := least(v_until, coalesce(p.end_on, v_until), app.today() + 400);
+  d := p.start_on;
+  while d <= v_until loop
+    v_guard := v_guard + 1;
+    if v_guard > 800 then exit; end if;
+    v_next := app.next_period(d, p.frequency, p.custom_interval_days);
+    v_due := case when p.due_within_days is null then v_next - 1
+                  else least(d + p.due_within_days - 1, greatest(v_next - 1, d)) end;
+    insert into public.inspection_tasks (plan_id, asset_id, organization_id, template_id, assignee_id, period_start, due_on)
+    select p.id, a.id, a.organization_id, p.template_id, p.default_inspector_id, d, v_due
+      from public.assets a join public.organizations o on o.id = a.organization_id
+     where a.status = 'active'
+       and p.organization_id = any(o.ancestors)
+       and (p.building_id is null or a.building_id = p.building_id)
+       and (p.asset_type_id is null or a.asset_type_id = p.asset_type_id)
+    on conflict (plan_id, asset_id, period_start) where plan_id is not null do nothing;
+    get diagnostics n = row_count;
+    v_total := v_total + n;
+    d := v_next;
+  end loop;
+  update public.assets a set next_due_on = t.next_due
+    from (select asset_id, min(due_on) next_due from public.inspection_tasks
+           where status = 'open' and plan_id = p.id group by asset_id) t
+   where a.id = t.asset_id and (a.next_due_on is null or a.next_due_on > t.next_due or a.next_due_on < app.today());
+  return v_total;
+end $$;
+revoke execute on function app.generate_plan_tasks(uuid, date) from public, anon, authenticated;
+
+-- ตัวที่เรียกจากเว็บ: ตรวจสิทธิ์ก่อน แล้วใช้แกนกลางเดียวกัน
+create or replace function public.generate_inspection_tasks(p_plan_id uuid, p_until date default null) returns int
+language plpgsql security definer set search_path = public as $$
+declare v_me uuid := app.require_login(); v_org uuid;
+begin
+  select organization_id into v_org from public.inspection_plans where id = p_plan_id;
+  if not found then perform app.fail('NOT_FOUND', 'ไม่พบแผนการตรวจ'); end if;
+  if not app.can_manage_org(v_org) then perform app.fail('FORBIDDEN', 'ไม่มีสิทธิ์จัดการแผนการตรวจของหน่วยงานนี้'); end if;
+  return app.generate_plan_tasks(p_plan_id, p_until);
+end $$;
+
+-- ---------- จุดตรวจ ----------
+create or replace function app.import_asset(p_code text, p_name text, p_type text, p_building text, p_floor text,
+                                            p_location text default null, p_detail text default null,
+                                            p_notes text default null) returns text
+language plpgsql security definer set search_path = public as $$
+declare b public.buildings; v_type public.asset_types; v_floor uuid; v_loc uuid; v_fname text;
+begin
+  select * into b from public.buildings where upper(code) = upper(btrim(p_building));
+  if not found then raise exception 'ไม่พบอาคารรหัส "%"', p_building; end if;
+  select * into v_type from public.asset_types where upper(code) = upper(btrim(p_type));
+  if not found then raise exception 'ไม่พบประเภทจุดตรวจ "%" (FE, FH, EL, EX, FA, EE, SP, LAB)', p_type; end if;
+  v_fname := btrim(p_floor);
+  if v_fname ~ '^[0-9]+$' then v_fname := 'ชั้น ' || v_fname; end if;
+  select id into v_floor from public.floors where building_id = b.id and name = v_fname;
+  if v_floor is null then raise exception 'ไม่พบ "%" ในอาคาร %', v_fname, b.code; end if;
+  if nullif(btrim(p_location), '') is not null then
+    select id into v_loc from public.locations where floor_id = v_floor and name = btrim(p_location);
+    if v_loc is null then raise exception 'ไม่พบห้อง/พื้นที่ "%" ใน % %', p_location, b.code, v_fname; end if;
+  end if;
+  if exists (select 1 from public.assets where upper(code) = upper(btrim(p_code))) then
+    return 'มีอยู่แล้ว: ' || upper(btrim(p_code));
+  end if;
+  insert into public.assets (code, name, asset_type_id, organization_id, building_id, floor_id, location_id,
+                             location_detail, frequency, status, notes)
+  values (upper(btrim(p_code)), btrim(p_name), v_type.id, b.organization_id, b.id, v_floor, v_loc,
+          nullif(btrim(p_detail), ''), v_type.default_frequency, 'active', nullif(btrim(p_notes), ''));
+  return 'เพิ่มแล้ว: ' || upper(btrim(p_code)) || ' ' || btrim(p_name);
+end $$;
+
+-- ---------- แผนการตรวจ ----------
+-- ครอบคลุมจุดตรวจทุกจุดของประเภทนี้ในหน่วยงาน (และหน่วยงานย่อย) หรือเฉพาะอาคารเมื่อระบุ p_building
+create or replace function app.import_plan(p_name text, p_org text, p_type text, p_frequency text default null,
+                                           p_due_within_days int default null, p_start date default null,
+                                           p_building text default null) returns text
+language plpgsql security definer set search_path = public as $$
+declare v_org uuid := app.import_org_id(p_org); v_type public.asset_types; v_b uuid; v_id uuid; n int;
+        v_freq public.frequency;
+begin
+  select * into v_type from public.asset_types where upper(code) = upper(btrim(p_type));
+  if not found then raise exception 'ไม่พบประเภทจุดตรวจ "%"', p_type; end if;
+  if v_type.default_template_id is null then raise exception 'ประเภท % ยังไม่ได้ผูกแบบตรวจ', v_type.code; end if;
+  if nullif(btrim(p_building), '') is not null then
+    select id into v_b from public.buildings where upper(code) = upper(btrim(p_building));
+    if v_b is null then raise exception 'ไม่พบอาคารรหัส "%"', p_building; end if;
+  end if;
+  v_freq := coalesce(nullif(btrim(p_frequency), '')::public.frequency, v_type.default_frequency);
+  if v_freq = 'custom' then raise exception 'แผนแบบกำหนดเองให้สร้างในเว็บ'; end if;
+  select id into v_id from public.inspection_plans
+   where organization_id = v_org and asset_type_id = v_type.id and building_id is not distinct from v_b and is_active
+   order by created_at limit 1;
+  if v_id is null then
+    insert into public.inspection_plans (name, organization_id, building_id, asset_type_id, template_id, frequency,
+                                         start_on, due_within_days)
+    values (btrim(p_name), v_org, v_b, v_type.id, v_type.default_template_id, v_freq,
+            coalesce(p_start, date_trunc('month', app.today())::date), p_due_within_days)
+    returning id into v_id;
+  end if;
+  n := app.generate_plan_tasks(v_id, null);
+  return btrim(p_name) || ' — สร้างงานตรวจเพิ่ม ' || n || ' งาน';
+end $$;
+
+revoke execute on function app.import_asset(text, text, text, text, text, text, text, text) from public, anon, authenticated;
+revoke execute on function app.import_plan(text, text, text, text, int, date, text) from public, anon, authenticated;
+
+-- ให้ Supabase API โหลดรายการตาราง/ฟังก์ชันใหม่ทันที (ไม่ต้องรอ)
+notify pgrst, 'reload schema';
+
+
+-- =====================================================================
+-- รายละเอียดอาคาร: เลขอาคารตามสถานที่ + ประเภทอาคารของมหาวิทยาลัย
+-- และ app.import_building รุ่นใหม่ (อัปเดตชื่อ/หน่วยงาน/เลข/ประเภท เมื่อรันซ้ำ)
+-- รันซ้ำได้ (idempotent)
+-- =====================================================================
+alter table public.buildings add column if not exists building_no int check (building_no is null or building_no > 0);
+alter table public.buildings add column if not exists building_type text;
+create index if not exists buildings_no_idx on public.buildings(building_no);
+
+drop function if exists app.import_building(text, text, text, int, text);
+create or replace function app.import_building(p_org text, p_code text, p_name text, p_floors int default 0,
+                                               p_address text default null, p_building_no int default null,
+                                               p_building_type text default null, p_description text default null)
+returns text
+language plpgsql security definer set search_path = public as $$
+declare v_org uuid := app.import_org_id(p_org); v_id uuid; v_new boolean := false; n int;
+begin
+  if nullif(btrim(p_code), '') is null or nullif(btrim(p_name), '') is null then raise exception 'ต้องระบุรหัสและชื่ออาคาร'; end if;
+  if coalesce(p_floors, 0) < 0 or coalesce(p_floors, 0) > 60 then raise exception 'จำนวนชั้นต้องอยู่ระหว่าง 0–60'; end if;
+  select id into v_id from public.buildings where upper(code) = upper(btrim(p_code));
+  if v_id is null then
+    insert into public.buildings (organization_id, code, name, address, building_no, building_type, description)
+    values (v_org, upper(btrim(p_code)), btrim(p_name), nullif(btrim(p_address), ''), p_building_no,
+            nullif(btrim(p_building_type), ''), nullif(btrim(p_description), ''))
+    returning id into v_id;
+    v_new := true;
+  else
+    -- ข้อมูลจากไฟล์นำเข้าเป็นข้อมูลหลัก: ปรับชื่อ หน่วยงาน เลขอาคาร และประเภทให้ตรง
+    update public.buildings
+       set name = btrim(p_name), organization_id = v_org,
+           building_no = coalesce(p_building_no, building_no),
+           building_type = coalesce(nullif(btrim(p_building_type), ''), building_type),
+           address = coalesce(nullif(btrim(p_address), ''), address),
+           description = coalesce(nullif(btrim(p_description), ''), description)
+     where id = v_id;
+  end if;
+  insert into public.floors (building_id, name, level)
+  select v_id, 'ชั้น ' || g, g from generate_series(1, coalesce(p_floors, 0)) g
+  on conflict (building_id, name) do nothing;
+  get diagnostics n = row_count;
+  return (case when v_new then 'เพิ่มแล้ว: ' else 'อัปเดตแล้ว: ' end) || upper(btrim(p_code)) || ' ' || btrim(p_name)
+         || case when n > 0 and not v_new then ' (+' || n || ' ชั้น)' else '' end;
+end $$;
+revoke execute on function app.import_building(text, text, text, int, text, int, text, text) from public, anon, authenticated;
+
+-- เปลี่ยนรหัสอาคาร (และรหัสจุดตรวจที่มีรหัสอาคารอยู่ในรหัส) เช่น PH1 → PHP03 — ใช้เมื่อปรับตามทะเบียนอาคารของมหาวิทยาลัย
+create or replace function app.rename_building_code(p_old text, p_new text) returns text
+language plpgsql security definer set search_path = public as $$
+declare v_id uuid; n int;
+begin
+  select id into v_id from public.buildings where upper(code) = upper(btrim(p_old));
+  if v_id is null then return 'ไม่มีรหัส ' || p_old || ' (ข้าม)'; end if;
+  if exists (select 1 from public.buildings where upper(code) = upper(btrim(p_new))) then
+    return 'มีรหัส ' || p_new || ' อยู่แล้ว — ไม่เปลี่ยน ' || p_old;
+  end if;
+  update public.buildings set code = upper(btrim(p_new)) where id = v_id;
+  update public.assets set code = replace(code, '-' || upper(btrim(p_old)) || '-', '-' || upper(btrim(p_new)) || '-')
+   where building_id = v_id and code like '%-' || upper(btrim(p_old)) || '-%';
+  get diagnostics n = row_count;
+  return 'เปลี่ยนรหัส ' || p_old || ' → ' || p_new || ' (จุดตรวจ ' || n || ' จุด)';
+end $$;
+revoke execute on function app.rename_building_code(text, text) from public, anon, authenticated;
+
+notify pgrst, 'reload schema';
+
+-- สถานะฐานข้อมูลสำหรับหน้า /setup-check (ตัวเลขสรุปเท่านั้น ไม่มีข้อมูลรายบุคคล)
+-- ใช้ตรวจว่าเว็บบน Vercel เชื่อมกับโปรเจกต์ Supabase ที่นำเข้าข้อมูลแล้วจริง
+create or replace function public.system_status() returns jsonb
+language sql stable security definer set search_path = public as $$
+  select jsonb_build_object(
+    'schema_building_locations', to_regprocedure('public.building_safety_overview(date,date,uuid)') is not null,
+    'schema_building_details', exists (select 1 from information_schema.columns
+                                        where table_schema = 'public' and table_name = 'buildings' and column_name = 'building_no'),
+    'organizations', (select count(*) from public.organizations where is_active),
+    'buildings', (select count(*) from public.buildings where is_active),
+    'assets', (select count(*) from public.assets where status = 'active'),
+    'users', (select count(*) from public.profiles where is_active),
+    'demo_data', exists (select 1 from public.organizations where name_th like '%(ตัวอย่าง)')
+                 or exists (select 1 from public.profiles where lower(email) like '%@demo.example.com'))
+$$;
+grant execute on function public.system_status() to anon, authenticated;
+
+notify pgrst, 'reload schema';
+
+
+-- =====================================================================
+-- ช่องทางนำเข้า/ดึงรายงานจาก Google Sheets (Apps Script)
+--   • ใช้ "รหัสนำเข้า" (import key) แยกต่างหาก — ไม่ต้องใส่ Secret key ของ Supabase ในสคริปต์
+--   • รหัสนำเข้าทำได้เฉพาะ: นำเข้าหน่วยงาน/อาคาร/ห้อง/จุดตรวจ/แผนการตรวจ/ผู้ใช้ และดึงรายงานสรุป
+--     (ลบข้อมูล แก้ผลตรวจ หรือเปลี่ยนสิทธิ์ผู้ดูแลระบบนอกเหนือการลงทะเบียน ไม่ได้)
+--   • เก็บเฉพาะค่า hash ของรหัสในฐานข้อมูล · ยกเลิกได้ทุกเมื่อ · บันทึกการใช้งานใน audit_logs
+-- สร้างรหัส (รันใน SQL Editor):   select app.create_import_key('Google Sheet ผู้ดูแลระบบ');
+-- ยกเลิกรหัสทั้งหมด:              select app.revoke_import_keys();
+-- รันซ้ำได้ (idempotent)
+-- =====================================================================
+create table if not exists app.import_keys (
+  id            uuid primary key default gen_random_uuid(),
+  name          text not null,
+  key_hash      text not null unique,
+  key_hint      text not null,                -- 4 ตัวท้าย ไว้ดูว่าเป็นรหัสไหน
+  created_at    timestamptz not null default now(),
+  last_used_at  timestamptz,
+  use_count     int not null default 0,
+  revoked_at    timestamptz
+);
+revoke all on app.import_keys from public, anon, authenticated;
+
+create or replace function app.create_import_key(p_name text default 'Google Sheet') returns text
+language plpgsql security definer set search_path = public, app, extensions as $$
+declare v_key text := 'nuimp_' || encode(gen_random_bytes(24), 'hex');
+begin
+  insert into app.import_keys (name, key_hash, key_hint)
+  values (coalesce(nullif(btrim(p_name), ''), 'Google Sheet'), encode(digest(v_key, 'sha256'), 'hex'), right(v_key, 4));
+  return v_key;   -- แสดงครั้งเดียว: คัดลอกไปใส่ใน Apps Script ทันที
+end $$;
+
+create or replace function app.revoke_import_keys() returns text
+language sql security definer set search_path = public, app as $$
+  with u as (update app.import_keys set revoked_at = now() where revoked_at is null returning 1)
+  select 'ยกเลิกรหัสนำเข้าแล้ว ' || count(*) || ' รหัส' from u
+$$;
+revoke execute on function app.create_import_key(text), app.revoke_import_keys() from public, anon, authenticated;
+
+create or replace function app.check_import_key(p_key text) returns uuid
+language plpgsql security definer set search_path = public, app, extensions as $$
+declare v_id uuid;
+begin
+  if p_key is null or p_key !~ '^nuimp_[0-9a-f]{48}$' then
+    perform pg_sleep(0.5);
+    raise exception 'รหัสนำเข้าไม่ถูกต้อง' using hint = 'BAD_KEY';
+  end if;
+  update app.import_keys set last_used_at = now(), use_count = use_count + 1
+   where key_hash = encode(digest(p_key, 'sha256'), 'hex') and revoked_at is null
+  returning id into v_id;
+  if v_id is null then
+    perform pg_sleep(0.5);
+    raise exception 'รหัสนำเข้าไม่ถูกต้องหรือถูกยกเลิกแล้ว' using hint = 'BAD_KEY';
+  end if;
+  return v_id;
+end $$;
+revoke execute on function app.check_import_key(text) from public, anon, authenticated;
+
+-- ---------- นำเข้า: ส่งเป็นชุด แต่ละแถวสำเร็จ/ไม่สำเร็จแยกกัน ----------
+-- p_kind: organizations | buildings | locations | assets | plans | users
+-- p_rows: [{"row": 2, ...ค่าแต่ละคอลัมน์...}, ...]  → คืน [{"row": 2, "ok": true, "message": "..."}]
+create or replace function public.sheet_import(p_key text, p_kind text, p_rows jsonb) returns jsonb
+language plpgsql security definer set search_path = public, app as $$
+declare
+  v_key uuid := app.check_import_key(p_key);
+  r jsonb; v_msg text; v_out jsonb := '[]'::jsonb; n_ok int := 0; n_err int := 0;
+  t text;
+begin
+  if jsonb_typeof(p_rows) is distinct from 'array' then raise exception 'ข้อมูลต้องเป็นรายการแถว'; end if;
+  if jsonb_array_length(p_rows) > 1000 then raise exception 'ส่งได้ครั้งละไม่เกิน 1000 แถว'; end if;
+  if p_kind not in ('organizations', 'buildings', 'locations', 'assets', 'plans', 'users') then
+    raise exception 'ไม่รู้จักชนิดข้อมูล "%"', p_kind;
+  end if;
+  for r in select * from jsonb_array_elements(p_rows) loop
+    begin
+      t := null;
+      v_msg := case p_kind
+        when 'organizations' then app.import_organization(r->>'code', r->>'name', coalesce(nullif(r->>'type', ''), 'faculty'),
+                                                          r->>'name_en', r->>'parent')
+        when 'buildings' then app.import_building(r->>'org', r->>'code', r->>'name',
+                                                  coalesce(nullif(r->>'floors', '')::numeric::int, 1), r->>'address',
+                                                  nullif(r->>'building_no', '')::numeric::int, r->>'building_type')
+        when 'locations' then app.import_location(r->>'building', r->>'floor', r->>'name', r->>'room_no', r->>'type')
+        when 'assets' then app.import_asset(r->>'code', r->>'name', r->>'type', r->>'building', r->>'floor',
+                                            r->>'location', r->>'detail', r->>'notes')
+        when 'plans' then app.import_plan(r->>'name', r->>'org', r->>'type', nullif(r->>'frequency', ''),
+                                          nullif(r->>'due_within_days', '')::numeric::int)
+        when 'users' then app.import_user(r->>'email', r->>'full_name', r->>'position', r->>'faculty', r->>'unit', r->>'role')
+      end;
+      v_out := v_out || jsonb_build_object('row', r->'row', 'ok', true, 'message', v_msg);
+      n_ok := n_ok + 1;
+    exception when others then
+      v_out := v_out || jsonb_build_object('row', r->'row', 'ok', false,
+        'message', case when sqlstate = '22P02' then 'ตัวเลขไม่ถูกต้อง (จำนวนชั้น/เลขอาคารต้องเป็นตัวเลข)' else sqlerrm end);
+      n_err := n_err + 1;
+    end;
+  end loop;
+  insert into public.audit_logs (actor_id, action, table_name, record_id, new_data)
+  values (null, 'SHEET_IMPORT', p_kind, v_key::text, jsonb_build_object('ok', n_ok, 'error', n_err));
+  return jsonb_build_object('ok', n_ok, 'error', n_err, 'results', v_out);
+end $$;
+
+-- ---------- ดึงรายงานลงชีต ----------
+-- p_kind: buildings (สรุปรายอาคาร) | findings (ข้อบกพร่องที่ยังไม่ปิด) | users (ผู้ใช้และบทบาท) | assets (ทะเบียนจุดตรวจ)
+create or replace function public.sheet_export(p_key text, p_kind text) returns jsonb
+language plpgsql security definer set search_path = public, app as $$
+declare v_key uuid := app.check_import_key(p_key); v jsonb;
+begin
+  if p_kind = 'buildings' then
+    select coalesce(jsonb_agg(x order by x->>'หน่วยงานเจ้าของ', x->>'รหัสอาคาร'), '[]') into v from (
+      select jsonb_build_object(
+        'หน่วยงานเจ้าของ', o.name_th, 'รหัสอาคาร', b.code, 'เลขอาคาร', b.building_no, 'ชื่ออาคาร', b.name,
+        'ประเภทอาคาร', b.building_type,
+        'จำนวนชั้น', (select count(*) from floors f where f.building_id = b.id),
+        'ชั้นที่มีผัง', (select count(*) from floors f where f.building_id = b.id and f.plan_path is not null),
+        'มีพิกัด', case when b.latitude is not null then 'มี' else 'ยังไม่มี' end,
+        'จุดตรวจ', (select count(*) from assets a where a.building_id = b.id and a.status = 'active'),
+        'งานตรวจเกินกำหนด', (select count(*) from inspection_tasks t join assets a on a.id = t.asset_id
+                              where a.building_id = b.id and t.status = 'open' and t.due_on < app.today()),
+        'ข้อบกพร่องค้าง', (select count(*) from findings fi join assets a on a.id = fi.asset_id
+                            where a.building_id = b.id and fi.status <> 'closed'),
+        'เร่งด่วนค้าง', (select count(*) from findings fi join assets a on a.id = fi.asset_id
+                          where a.building_id = b.id and fi.status <> 'closed' and fi.severity in ('high', 'critical')),
+        'ตรวจล่าสุด', (select to_char(max(i.submitted_at) at time zone 'Asia/Bangkok', 'YYYY-MM-DD HH24:MI')
+                        from inspections i join assets a on a.id = i.asset_id where a.building_id = b.id and i.status = 'submitted')
+      ) x
+      from buildings b join organizations o on o.id = b.organization_id where b.is_active) s;
+  elsif p_kind = 'findings' then
+    select coalesce(jsonb_agg(x order by x->>'ครบกำหนด' nulls last), '[]') into v from (
+      select jsonb_build_object(
+        'เลขที่', fi.finding_no, 'ความเร่งด่วน', fi.severity, 'สถานะ', fi.status, 'หัวข้อ', fi.title,
+        'รหัสจุดตรวจ', a.code, 'อาคาร', b.code || ' ' || b.name, 'หน่วยงาน', o.name_th,
+        'ผู้รับผิดชอบ', p.full_name, 'ครบกำหนด', fi.due_on,
+        'เกินกำหนด', case when fi.due_on < app.today() then 'เกิน' else '' end,
+        'ความคืบหน้า (%)', fi.progress_pct,
+        'พบเมื่อ', to_char(fi.created_at at time zone 'Asia/Bangkok', 'YYYY-MM-DD')) x
+      from findings fi join assets a on a.id = fi.asset_id join buildings b on b.id = a.building_id
+      join organizations o on o.id = fi.organization_id left join profiles p on p.id = fi.assignee_id
+      where fi.status <> 'closed') s;
+  elsif p_kind = 'users' then
+    select coalesce(jsonb_agg(x order by x->>'อีเมล'), '[]') into v from (
+      select jsonb_build_object('อีเมล', u.email, 'ชื่อ-นามสกุล', u.full_name, 'ตำแหน่ง', u.position,
+        'สังกัด', u.org, 'บทบาท', u.roles, 'สถานะ', u.st) x from (
+        select p.email, p.full_name, p.position, o.name_th as org,
+               coalesce(string_agg(ra.role::text || ' @ ' || ro.name_th, ', ' order by ra.role), '') as roles,
+               case when not p.is_active then 'ระงับ' when count(ra.id) = 0 then 'รอกำหนดสิทธิ์' else 'ใช้งาน' end as st
+          from profiles p left join organizations o on o.id = p.organization_id
+          left join role_assignments ra on ra.user_id = p.id left join organizations ro on ro.id = ra.organization_id
+         group by p.id, o.name_th
+        union all
+        select pa.email, pa.full_name, pa.position, ho.name_th, pa.role::text || ' @ ' || po.name_th, 'ลงทะเบียนล่วงหน้า (ยังไม่เคยเข้าระบบ)'
+          from user_preassignments pa join organizations po on po.id = pa.organization_id
+          left join organizations ho on ho.id = pa.home_organization_id
+         where pa.applied_at is null) u) s;
+  elsif p_kind = 'assets' then
+    select coalesce(jsonb_agg(x order by x->>'รหัสจุดตรวจ'), '[]') into v from (
+      select jsonb_build_object('รหัสจุดตรวจ', a.code, 'ชื่อ', a.name, 'ประเภท', t.code, 'อาคาร', b.code,
+        'ชั้น', f.name, 'ห้อง/พื้นที่', l.name, 'สถานะ', a.status, 'ตรวจครั้งถัดไป', a.next_due_on,
+        'ปักหมุดบนผัง', case when a.plan_x is not null then 'แล้ว' else 'ยัง' end) x
+      from assets a join asset_types t on t.id = a.asset_type_id join buildings b on b.id = a.building_id
+      left join floors f on f.id = a.floor_id left join locations l on l.id = a.location_id) s;
+  else
+    raise exception 'ไม่รู้จักรายงาน "%"', p_kind;
+  end if;
+  return jsonb_build_object('generated_at', to_char(now() at time zone 'Asia/Bangkok', 'YYYY-MM-DD HH24:MI'), 'rows', v);
+end $$;
+
+-- ตรวจการเชื่อมต่อจาก Apps Script (ตอบเฉพาะว่ารหัสใช้ได้ + จำนวนข้อมูลสรุป)
+create or replace function public.sheet_ping(p_key text) returns jsonb
+language plpgsql security definer set search_path = public, app as $$
+declare v_key uuid := app.check_import_key(p_key);
+begin
+  return jsonb_build_object('ok', true, 'organizations', (select count(*) from organizations),
+    'buildings', (select count(*) from buildings), 'assets', (select count(*) from assets),
+    'users', (select count(*) from profiles));
+end $$;
+
+revoke execute on function public.sheet_import(text, text, jsonb), public.sheet_export(text, text), public.sheet_ping(text) from public;
+grant execute on function public.sheet_import(text, text, jsonb), public.sheet_export(text, text), public.sheet_ping(text) to anon, authenticated;
+
+notify pgrst, 'reload schema';
+
+-- ---------- ส่วนที่ 2: หน่วยงาน (จากไฟล์ NU-Inspections-Users_3.csv) ----------
+select r as ผลการนำเข้าหน่วยงาน from (values
+  (app.import_organization('AGNRE', 'คณะเกษตรศาสตร์ ทรัพยากรธรรมชาติและสิ่งแวดล้อม', 'faculty')),
+  (app.import_organization('PHAR', 'คณะเภสัชศาสตร์', 'faculty')),
+  (app.import_organization('MED', 'คณะแพทยศาสตร์', 'faculty')),
+  (app.import_organization('LDSC', 'คณะโลจิสติกส์และดิจิทัลซัพพลายเชน', 'faculty')),
+  (app.import_organization('DENT', 'คณะทันตแพทยศาสตร์', 'faculty')),
+  (app.import_organization('LAW', 'คณะนิติศาสตร์', 'faculty')),
+  (app.import_organization('BEC', 'คณะบริหารธุรกิจ เศรษฐศาสตร์และการสื่อสาร', 'faculty')),
+  (app.import_organization('NURS', 'คณะพยาบาลศาสตร์', 'faculty')),
+  (app.import_organization('HUM', 'คณะมนุษยศาสตร์', 'faculty')),
+  (app.import_organization('SC', 'คณะวิทยาศาสตร์', 'faculty')),
+  (app.import_organization('MEDSCI', 'คณะวิทยาศาสตร์การแพทย์', 'faculty')),
+  (app.import_organization('EN', 'คณะวิศวกรรมศาสตร์', 'faculty')),
+  (app.import_organization('EDU', 'คณะศึกษาศาสตร์', 'faculty')),
+  (app.import_organization('ARCH', 'คณะสถาปัตยกรรมศาสตร์ ศิลปะและการออกแบบ', 'faculty')),
+  (app.import_organization('AHS', 'คณะสหเวชศาสตร์', 'faculty')),
+  (app.import_organization('SOC', 'คณะสังคมศาสตร์', 'faculty')),
+  (app.import_organization('PH', 'คณะสาธารณสุขศาสตร์', 'faculty')),
+  (app.import_organization('GRAD', 'บัณฑิตวิทยาลัย', 'faculty')),
+  (app.import_organization('CFR', 'วิทยาลัยเพื่อการค้นคว้าระดับรากฐาน', 'faculty')),
+  (app.import_organization('NUIC', 'วิทยาลัยนานาชาติ', 'faculty')),
+  (app.import_organization('SGT', 'วิทยาลัยพลังงานทดแทนและสมาร์ตกริดเทคโนโลยี', 'faculty')),
+  (app.import_organization('PLAN', 'กองแผนงาน', 'office')),
+  (app.import_organization('LEGAL', 'กองกฎหมาย', 'office')),
+  (app.import_organization('GAD', 'กองกลาง', 'office')),
+  (app.import_organization('IPTT', 'กองการถ่ายทอดเทคโนโลยีและบริหารจัดการทรัพย์สินทางปัญญา', 'office')),
+  (app.import_organization('HRD', 'กองการบริหารงานบุคคล', 'office')),
+  (app.import_organization('RDI', 'กองการวิจัยและนวัตกรรม', 'office')),
+  (app.import_organization('STA', 'กองกิจการนิสิต', 'office')),
+  (app.import_organization('FIN', 'กองคลัง', 'office')),
+  (app.import_organization('ITC', 'กองบริการเทคโนโลยีสารสนเทศและการสื่อสาร', 'office')),
+  (app.import_organization('ACS', 'กองบริการการศึกษา', 'office')),
+  (app.import_organization('EQA', 'กองพัฒนาคุณภาพการศึกษา', 'office')),
+  (app.import_organization('ILA', 'กองพัฒนาภาษาและกิจการต่างประเทศ', 'office')),
+  (app.import_organization('ASV', 'กองส่งเสริมการบริการวิชาการ', 'office')),
+  (app.import_organization('ACU', 'กองส่งเสริมศิลปวัฒนธรรม', 'office')),
+  (app.import_organization('BLDG', 'กองอาคารสถานที่', 'office')),
+  (app.import_organization('LAC', 'สถานสัตว์ทดลองเพื่อการวิจัย', 'center')),
+  (app.import_organization('AUDIT', 'สำนักงานตรวจสอบภายใน', 'office')),
+  (app.import_organization('PRES', 'สำนักงานอธิการบดี', 'office')),
+  (app.import_organization('SCIPARK', 'อุทยานวิทยาศาสตร์มหาวิทยาลัยนเรศวร', 'center')),
+  (app.import_organization('LIB', 'สำนักหอสมุด', 'center')),
+  (app.import_organization('SSCH', 'โรงเรียนมัธยมสาธิตมหาวิทยาลัยนเรศวร', 'unit')),
+  (app.import_organization('PSCH', 'โรงเรียนอนุบาลและประถมสาธิตมหาวิทยาลัยนเรศวร', 'unit'))
+) v(r);
+
+-- ---------- ส่วนที่ 3: ปรับรหัสอาคารเดิมให้ตรงทะเบียนอาคาร (ถ้าเคยนำเข้า PH1–PH3) ----------
+select r as ผลการปรับรหัส from (values
+  (app.rename_building_code('PH1', 'PHP03')),
+  (app.rename_building_code('PH2', 'PHP02')),
+  (app.rename_building_code('PH3', 'PHP01'))
+) v(r);
+
+-- ---------- ส่วนที่ 4: อาคาร 204 อาคาร (จากทะเบียนอาคาร — file CAD อาคาร) ----------
+-- อาคารที่ไม่ทราบจำนวนชั้นสร้าง "ชั้น 1" ไว้ก่อน — เติมจำนวนชั้นจริงในแบบฟอร์ม Excel แล้วรันคำสั่งของแถวนั้นซ้ำ
+select r as ผลการนำเข้าอาคาร from (values
+  (app.import_building('กองคลัง', 'MAS01', 'อาคารมิ่งขวัญ 1 (อาคารกลาง)', 1, null, 101, 'สนับสนุนการบริหาร', null)),
+  (app.import_building('กองคลัง', 'MAS02', 'อาคารมิ่งขวัญ 2 (อาคารฝั่งซ้าย)', 1, null, 102, 'สนับสนุนการบริหาร', null)),
+  (app.import_building('กองคลัง', 'MAS03', 'อาคารมิ่งขวัญ 3 (อาคารฝั่งขวา)', 1, null, 103, 'สนับสนุนการบริหาร', null)),
+  (app.import_building('กองคลัง', 'MAS04', 'อาคารเสลา 53 (อาคารเก็บของ)', 1, null, 104, 'อาคารอื่นๆ', null)),
+  (app.import_building('คณะมนุษยศาสตร์', 'HSU01', 'อาคารคณะมนุษยศาสตร์ อาคาร1', 1, null, 90, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะมนุษยศาสตร์', 'HSU02', 'อาคารคณะมนุษยศาสตร์ อาคาร2', 1, null, 91, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะมนุษยศาสตร์', 'HSU03', 'อาคารคณะมนุษยศาสตร์ อาคาร3', 1, null, 92, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะมนุษยศาสตร์', 'HSU04', 'อาคารคณะมนุษยศาสตร์ อาคาร4', 1, null, 93, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะมนุษยศาสตร์', 'HSU05', 'อาคารคณะมนุษยศาสตร์ อาคาร5', 1, null, 94, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะมนุษยศาสตร์', 'HSU06', 'อาคารคณะมนุษยศาสตร์ อาคาร6', 1, null, 95, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะมนุษยศาสตร์', 'NIC', 'อาคารวิทยาลัยนานาชาติ', 1, null, 96, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะเภสัชศาสตร์', 'PHA01', 'อาคารคณะเภสัชศาสตร์ (อาคาร1)', 1, null, 24, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะเภสัชศาสตร์', 'PHA02', 'อาคารคณะเภสัชศาสตร์ (อาคาร2)', 1, null, 25, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะเภสัชศาสตร์', 'PHA03', 'อาคารคณะเภสัชศาสตร์ (อาคาร3)', 1, null, 26, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะเภสัชศาสตร์', 'PHA04', 'อาคารคณะเภสัชศาสตร์ (อาคาร4)', 1, null, 27, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะเภสัชศาสตร์', 'PHA05', 'อาคารคณะเภสัชศาสตร์ (อาคาร5)', 1, null, 28, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะเภสัชศาสตร์', 'PHA06', 'อาคารคณะเภสัชศาสตร์ (อาคาร6)', 1, null, 29, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะเภสัชศาสตร์', 'PHA07', 'อาคารปฏิบัติการสมุนไพรของคณะเภสัชศาสตร์', 1, null, 30, 'สนับสนุนการวิจัย/ปฏิบัติการ', null)),
+  (app.import_building('คณะเภสัชศาสตร์', 'PHA08', 'อาคารสถานปฏิบัติการเภสัชกรรมชุมชน แห่งที่ 2', 1, null, 31, 'อาคารอื่นๆ', null)),
+  (app.import_building('คณะศึกษาศาสตร์', 'EDU01', 'อาคารคณะศึกษาศาสตร์ (อาคาร ED1)', 1, null, 86, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะศึกษาศาสตร์', 'EDU02', 'อาคารคณะศึกษาศาสตร์ (อาคาร ED2)', 1, null, 87, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('กองอาคารสถานที่', 'DOR01', 'อาคาร มน.นิเวศ 1', 1, null, 163, 'อาคารหอพัก', null)),
+  (app.import_building('กองอาคารสถานที่', 'DOR02', 'อาคาร มน.นิเวศ 2', 1, null, 164, 'อาคารหอพัก', null)),
+  (app.import_building('กองอาคารสถานที่', 'DOR03', 'อาคาร มน.นิเวศ 3', 1, null, 165, 'อาคารหอพัก', null)),
+  (app.import_building('กองอาคารสถานที่', 'DOR04', 'อาคาร มน.นิเวศ 4', 1, null, 166, 'อาคารหอพัก', null)),
+  (app.import_building('กองอาคารสถานที่', 'DOR05', 'อาคาร มน.นิเวศ 5', 1, null, 167, 'อาคารหอพัก', null)),
+  (app.import_building('กองอาคารสถานที่', 'DOR06', 'อาคาร มน.นิเวศ 6', 1, null, 168, 'อาคารหอพัก', null)),
+  (app.import_building('กองอาคารสถานที่', 'DOR07', 'อาคาร มน.นิเวศ 7', 1, null, 169, 'อาคารหอพัก', null)),
+  (app.import_building('กองอาคารสถานที่', 'DOR08', 'อาคาร มน.นิเวศ 8', 1, null, 170, 'อาคารหอพัก', null)),
+  (app.import_building('กองอาคารสถานที่', 'DOR09', 'อาคาร มน.นิเวศ 9', 1, null, 171, 'อาคารหอพัก', null)),
+  (app.import_building('กองอาคารสถานที่', 'DOR10', 'อาคาร มน.นิเวศ 10', 1, null, 172, 'อาคารหอพัก', null)),
+  (app.import_building('กองอาคารสถานที่', 'DOR11', 'อาคาร มน.นิเวศ 11', 1, null, 173, 'อาคารหอพัก', null)),
+  (app.import_building('กองอาคารสถานที่', 'DOR12', 'อาคาร มน.นิเวศ 12', 1, null, 174, 'อาคารหอพัก', null)),
+  (app.import_building('กองอาคารสถานที่', 'DOR14', 'อาคาร มน.นิเวศ 14', 1, null, 175, 'อาคารหอพัก', null)),
+  (app.import_building('กองอาคารสถานที่', 'DOR15', 'อาคาร มน.นิเวศ 15', 1, null, 176, 'อาคารหอพัก', null)),
+  (app.import_building('คณะเกษตรศาสตร์ ทรัพยากรธรรมชาติและสิ่งแวดล้อม', 'AGI01', 'อาคารคณะเกษตรศาสตร์ (อาคารสำนักงานเลขานุการ)', 1, null, 74, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะเกษตรศาสตร์ ทรัพยากรธรรมชาติและสิ่งแวดล้อม', 'AGI02', 'อาคารคณะเกษตรศาสตร์ (อาคารเรียนรวม)', 1, null, 75, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะเกษตรศาสตร์ ทรัพยากรธรรมชาติและสิ่งแวดล้อม', 'AGI03', 'อาคารคณะเกษตรศาสตร์ (อาคารปฏิบัติการพืชศาสตร์)', 1, null, 76, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะเกษตรศาสตร์ ทรัพยากรธรรมชาติและสิ่งแวดล้อม', 'AGI04', 'อาคารคณะเกษตรศาสตร์ (อาคารปฏิบัติการอุตสาหกรรมเกษตร)', 1, null, 77, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะเกษตรศาสตร์ ทรัพยากรธรรมชาติและสิ่งแวดล้อม', 'AGI06', 'อาคารคณะเกษตรศาสตร์ (อาคารปฏิบัติการแปรรูปอาหาร)', 1, null, 78, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะเกษตรศาสตร์ ทรัพยากรธรรมชาติและสิ่งแวดล้อม', 'AGI07', 'อาคารคณะเกษตรศาสตร์ (อาคารเรือนกระจก1 และอาคารเรือนกระจก2)', 1, null, 79, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะเกษตรศาสตร์ ทรัพยากรธรรมชาติและสิ่งแวดล้อม', 'AGI08', 'อาคารนวัตกรรมเทคโนโลยีการแปรรูปผลผลิตทางเกษตรและอาหาร', 1, null, 80, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะเกษตรศาสตร์ ทรัพยากรธรรมชาติและสิ่งแวดล้อม', 'AGI09', 'อาคารศูนย์พัฒนามาตรฐานและเฝ้าระวังการปนเปื้อนสารเคมีฯ', 1, null, 81, 'สนับสนุนการวิจัย/ปฏิบัติการ', null)),
+  (app.import_building('คณะเกษตรศาสตร์ ทรัพยากรธรรมชาติและสิ่งแวดล้อม', 'AGI10', 'อาคารวิจัยแมลงและศัตรูพืช', 1, null, 82, 'สนับสนุนการวิจัย/ปฏิบัติการ', null)),
+  (app.import_building('คณะวิศวกรรมศาสตร์', 'ENG01', 'อาคารคณะวิศวกรรมศาสตร์ (อาคารเรียนรวม EN)', 1, null, 64, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะวิศวกรรมศาสตร์', 'ENG02', 'อาคารคณะวิศวกรรมศาสตร์ (อาคารวิศวกรรมโยธา)', 1, null, 65, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะวิศวกรรมศาสตร์', 'ENG03', 'อาคารคณะวิศวกรรมศาสตร์ (อาคารวิศวกรรมอุตสาหการ)', 1, null, 66, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะวิศวกรรมศาสตร์', 'ENG04', 'อาคารคณะวิศวกรรมศาสตร์ (อาคารวิศวกรรมไฟฟ้า)', 1, null, 67, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะวิศวกรรมศาสตร์', 'ENG05', 'อาคารคณะวิศวกรรมศาสตร์ (อาคารปฏิบัติการโยธา)', 1, null, 68, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะวิศวกรรมศาสตร์', 'ENG06', 'อาคารคณะวิศวกรรมศาสตร์ (อาคารปฏิบัติการวิศวกรรมเครื่องกล)', 1, null, 69, 'สนับสนุนการวิจัย/ปฏิบัติการ', null)),
+  (app.import_building('คณะวิศวกรรมศาสตร์', 'ENG07', 'อาคารคณะวิศวกรรมศาสตร์ (อาคารปฏิบัติการวิศวกรรมอุตสาหการ)', 1, null, 70, 'สนับสนุนการวิจัย/ปฏิบัติการ', null)),
+  (app.import_building('คณะวิศวกรรมศาสตร์', 'ENG08', 'อาคารคณะวิศวกรรมศาสตร์ (อาคารปฏิบัติการวิศวกรรมไฟฟ้า)', 1, null, 71, 'สนับสนุนการวิจัย/ปฏิบัติการ', null)),
+  (app.import_building('คณะวิศวกรรมศาสตร์', 'ENG09', 'กลุ่มอาคาร Startup and Innovation ของธุรกิจสมุนไพรและอุตสาหกรรมเกษตร', 1, null, 72, 'สนับสนุนการวิจัย/ปฏิบัติการ', null)),
+  (app.import_building('คณะวิทยาศาสตร์การแพทย์', 'AMS01', 'อาคารคณะวิทยาศาสตร์การแพทย์', 1, null, 32, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะวิทยาศาสตร์', 'SCI01', 'อาคารคณะวิทยาศาสตร์ (สำนักงานเลขานุการ)', 1, null, 36, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะวิทยาศาสตร์', 'SCI02', 'อาคารคณะวิทยาศาสตร์ (ภาควิชาเคมี)', 1, null, 37, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะวิทยาศาสตร์', 'SCI03', 'อาคารคณะวิทยาศาสตร์ (ภาควิชาชีววิทยา)', 1, null, 38, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะวิทยาศาสตร์', 'SCI04', 'อาคารคณะวิทยาศาสตร์ (ภาควิชาคณิตศาสตร์)', 1, null, 39, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะวิทยาศาสตร์', 'SCI05', 'อาคารคณะวิทยาศาสตร์ (ภาควิชาฟิสิกส์)', 1, null, 40, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะวิทยาศาสตร์', 'SCI06', 'อาคารคณะวิทยาศาสตร์ (อาคารเก็บวัตถุอันตราย / อาคารศูนย์ปฏิบัติการวิทยาศาสตร์)', 1, null, 41, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะวิทยาศาสตร์', 'SCI07', 'อาคารปฏิบัติการกัมมันตรังสี (อาคารแหล่งกำเนิดนิวตรอนคณะวิทยาศาสตร์)', 1, null, 42, 'สนับสนุนการวิจัย/ปฏิบัติการ', null)),
+  (app.import_building('คณะวิทยาศาสตร์', 'SCI08', 'อาคารควบคุมพลังงานโซล่าเซลล์', 1, null, 43, 'สนับสนุนการวิจัย/ปฏิบัติการ', null)),
+  (app.import_building('คณะวิทยาศาสตร์', 'SCI09', 'อาคารปฏิบัติการแบตเตอรี่ฯ', 1, null, 44, 'สนับสนุนการวิจัย/ปฏิบัติการ', null)),
+  (app.import_building('คณะวิทยาศาสตร์', 'SCI10', 'อาคาร Student Center', 1, null, 45, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('กองอาคารสถานที่', 'STD01', 'อาคารกีฬากลางแจ้งพร้อมอัฒจันทร์ 2000 ที่นั่ง', 1, null, 143, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'STD02', 'อาคารกีฬากลางแจ้งพร้อมอัฒจันทร์ (อาคารใหม่)', 1, null, 144, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองกิจการนิสิต', 'GYM01', 'อาคารอเนกประสงค์ (อาคารยิมเนเซียม)', 1, null, 131, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองกิจการนิสิต', 'GYM02', 'อาคารกีฬาในร่ม', 1, null, 132, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองกิจการนิสิต', 'GYM03', 'อาคารกิจกรรมด้านศิลปวัฒนธรรม', 1, null, 133, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองกิจการนิสิต', 'GYM04', 'อาคารกิจกรรมด้านข้างอเนกประสงค์', 1, null, 134, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองกิจการนิสิต', 'GYM05', 'อาคารสระว่ายน้ำสุพรรณกัลยา', 1, null, 135, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองกิจการนิสิต', 'GYM06', 'อาคารห้องน้ำชาย-หญิง ข้างสนามฟุตซอล', 1, null, 136, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองกิจการนิสิต', 'SA01', 'อาคารชมรมนิสิต อาคาร 1', 1, null, 138, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองกิจการนิสิต', 'SA02', 'อาคารชมรมนิสิต อาคาร 2', 1, null, 139, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองกิจการนิสิต', 'SA03', 'อาคารชมรมนิสิต อาคาร 3', 1, null, 140, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองกิจการนิสิต', 'SA04', 'อาคารชมรมนิสิต อาคาร 4', 1, null, 141, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองกิจการนิสิต', 'SA05', 'อาคารชมรมนิสิต อาคาร 5', 1, null, 142, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองส่งเสริมศิลปวัฒนธรรม', 'NUAC', 'อาคารวิสุทธิกษัตริย์', 1, null, 129, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองบริการเทคโนโลยีสารสนเทศและการสื่อสาร', 'CIT', 'อาคารศูนย์บริการเทคโนโลยีและการสื่อสาร', 1, null, 130, 'สนับสนุนการบริหาร', null)),
+  (app.import_building('กองกิจการนิสิต', 'DRS01', 'อาคารหอพักนิสิต อาคาร1', 1, null, 148, 'อาคารหอพัก', null)),
+  (app.import_building('กองกิจการนิสิต', 'DRS02', 'อาคารหอพักนิสิต อาคาร2', 1, null, 149, 'อาคารหอพัก', null)),
+  (app.import_building('กองกิจการนิสิต', 'DRS03', 'อาคารหอพักนิสิต อาคาร3', 1, null, 150, 'อาคารหอพัก', null)),
+  (app.import_building('กองกิจการนิสิต', 'DRS04', 'อาคารหอพักนิสิต อาคาร4', 1, null, 151, 'อาคารหอพัก', null)),
+  (app.import_building('กองกิจการนิสิต', 'DRS05', 'อาคารหอพักนิสิต อาคาร5', 1, null, 152, 'อาคารหอพัก', null)),
+  (app.import_building('กองกิจการนิสิต', 'DRS06', 'อาคารหอพักนิสิต อาคาร6', 1, null, 153, 'อาคารหอพัก', null)),
+  (app.import_building('กองกิจการนิสิต', 'DRS07', 'อาคารหอพักนิสิต อาคาร7', 1, null, 154, 'อาคารหอพัก', null)),
+  (app.import_building('กองกิจการนิสิต', 'DRS08', 'อาคารหอพักนิสิต อาคาร8', 1, null, 155, 'อาคารหอพัก', null)),
+  (app.import_building('กองกิจการนิสิต', 'DRS09', 'อาคารหอพักนิสิต อาคาร9', 1, null, 156, 'อาคารหอพัก', null)),
+  (app.import_building('กองกิจการนิสิต', 'DRS10', 'อาคารหอพักนิสิต อาคาร10', 1, null, 157, 'อาคารหอพัก', null)),
+  (app.import_building('กองกิจการนิสิต', 'DRS11', 'อาคารหอพักนิสิต อาคาร11', 1, null, 158, 'อาคารหอพัก', null)),
+  (app.import_building('กองกิจการนิสิต', 'DRS12', 'อาคารหอพักนิสิต อาคาร12', 1, null, 159, 'อาคารหอพัก', null)),
+  (app.import_building('กองกิจการนิสิต', 'DRS13', 'อาคารหอพักนิสิต อาคาร13', 1, null, 160, 'อาคารหอพัก', null)),
+  (app.import_building('กองกิจการนิสิต', 'DRS14', 'อาคารหอพักนิสิต อาคาร14', 1, null, 161, 'อาคารหอพัก', null)),
+  (app.import_building('กองกิจการนิสิต', 'DRS15', 'อาคารหอพักนิสิต อาคาร15', 1, null, 162, 'อาคารหอพัก', null)),
+  (app.import_building('คณะแพทยศาสตร์', 'DRS16', 'อาคารหอพักนิสิตแพทย์', 1, null, 9, 'อาคารหอพัก', null)),
+  (app.import_building('กองกิจการนิสิต', 'NSA', 'อาคารขวัญเมือง', 1, null, 145, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองกิจการนิสิต', 'NSQ', 'อาคาร NU SQUARE', 1, null, 146, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองกิจการนิสิต', 'NSC', 'อาคาร NU CANTEEN', 1, null, 147, 'สนับสนุนการบริการ', null)),
+  (app.import_building('สำนักหอสมุด', 'LIB01', 'อาคารสำนักหอสมุด (อาคารแสงเทียน)', 1, null, 109, 'สนับสนุนการบริการ', null)),
+  (app.import_building('สำนักหอสมุด', 'LIB02', 'อาคารสำนักหอสมุด (อาคารเรียนรู้)', 1, null, 110, 'สนับสนุนการบริการ', null)),
+  (app.import_building('คณะสถาปัตยกรรมศาสตร์ ศิลปะและการออกแบบ', 'ARC01', 'คณะสถาปัตยกรรมศาสตร์ (อาคาร ARC)', 1, null, 83, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะสถาปัตยกรรมศาสตร์ ศิลปะและการออกแบบ', 'ARC02', 'คณะสถาปัตยกรรมศาสตร์ (อาคาร ARL)', 1, null, 84, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะสถาปัตยกรรมศาสตร์ ศิลปะและการออกแบบ', 'ARC03', 'อาคารอุตสาหกรรมศึกษา', 1, null, 85, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('กองบริการการศึกษา', 'QSA', 'อาคารเฉลิมพระเกียรติ 72 พรรษา บรมราชินีนาถ (QS)', 1, null, 105, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('กองบริการการศึกษา', 'QSB', 'อาคารโรงละคร', 1, null, 106, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองบริการการศึกษา', 'QSC', 'อาคารปราบไตรจักร1', 1, null, 107, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('กองบริการการศึกษา', 'QSD', 'อาคารปราบไตรจักร2', 1, null, 108, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('กองอาคารสถานที่', 'DBA', 'อาคารกองอาคารสถานที่ (สำนักงาน)', 1, null, 202, 'สนับสนุนการบริหาร', null)),
+  (app.import_building('สถานสัตว์ทดลองเพื่อการวิจัย', 'CAR', 'อาคารศูนย์ปฏิบัติการวิจัยและทดสอบด้านความปลอดภัยในสัตว์ทดลอง', 1, null, 119, 'สนับสนุนการวิจัย/ปฏิบัติการ', null)),
+  (app.import_building('กองส่งเสริมการบริการวิชาการ', 'NAN01', 'อาคารบริการ (กลุ่มอาคารนาโนเทคโนโลยีทางการแพทย์)', 1, null, 113, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองส่งเสริมการบริการวิชาการ', 'NAN02', 'อาคารมหาธรรมราชา (อาคาร A)', 1, null, 114, 'สนับสนุนการวิจัย/ปฏิบัติการ', null)),
+  (app.import_building('กองส่งเสริมการบริการวิชาการ', 'NAN03', 'อาคารมหาธรรมราชา (อาคาร B)', 1, null, 115, 'สนับสนุนการวิจัย/ปฏิบัติการ', null)),
+  (app.import_building('กองส่งเสริมการบริการวิชาการ', 'NAN04', 'อาคารมหาธรรมราชา (อาคาร C)', 1, null, 116, 'สนับสนุนการวิจัย/ปฏิบัติการ', null)),
+  (app.import_building('กองส่งเสริมการบริการวิชาการ', 'NAN05', 'อาคารเอกาทศรถ', 1, null, 112, 'สนับสนุนการบริการ', null)),
+  (app.import_building('คณะวิทยาศาสตร์การแพทย์', 'NAN06', 'อาคารกายวิภาคศาสตร์', 1, null, 33, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('สถานสัตว์ทดลองเพื่อการวิจัย', 'NAN07', 'อาคารสถานสัตว์ทดลองเพื่อการวิจัย', 1, null, 118, 'สนับสนุนการวิจัย/ปฏิบัติการ', null)),
+  (app.import_building('คณะวิทยาศาสตร์การแพทย์', 'NAN08', 'อาคารดองศพอาจารย์ใหญ่', 1, null, 34, 'สนับสนุนการวิจัย/ปฏิบัติการ', null)),
+  (app.import_building('คณะวิทยาศาสตร์การแพทย์', 'NAN09', 'อาคารล้างศพ', 1, null, 35, 'สนับสนุนการวิจัย/ปฏิบัติการ', null)),
+  (app.import_building('กองส่งเสริมการบริการวิชาการ', 'KNC', 'ศูนย์แสดงนิทรรศการและการจัดประชุมนานาชาติสมเด็จพระนเรศวรมหาราช (KNECC)', 1, null, 111, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'NEW01', 'อาคารสำหรับยกระดับตำรายาแผนไทยสู่มาตรฐานสากล', 1, null, 204, 'สนับสนุนการวิจัย/ปฏิบัติการ', null)),
+  (app.import_building('คณะโลจิสติกส์และดิจิทัลซัพพลายเชน', 'LOG', 'อาคารคณะโลจิสติกส์และดิจิทัลซัพพลายเชน (อาคารเพราพิลาส)', 1, null, 46, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะสหเวชศาสตร์', 'AHS04', 'อาคารธาราบำบัดมาตรฐานสำหรับผู้สูงอายุ', 1, null, 17, 'สนับสนุนการบริการ', null)),
+  (app.import_building('คณะทันตแพทยศาสตร์', 'DEN01', 'อาคารคณะทันตแพทยศาสตร์ (อาคารบริหาร)', 1, null, 11, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะทันตแพทยศาสตร์', 'DEN02', 'อาคารคณะทันตแพทยศาสตร์ (อาคารปฏิบัติการทันตกรรม)', 1, null, 12, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะทันตแพทยศาสตร์', 'DEN03', 'อาคารโรงพยาบาลทันตกรรม 2', 1, null, 13, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะสหเวชศาสตร์', 'AHS01', 'อาคารคณะสหเวชศาสตร์ (อาคารบริหาร)', 1, null, 14, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะสหเวชศาสตร์', 'AHS02', 'อาคารคณะสหเวชศาสตร์ (อาคารปฏิบัติการ 1)', 1, null, 15, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะสหเวชศาสตร์', 'AHS03', 'อาคารคณะสหเวชศาสตร์ (อาคารปฏิบัติการ 2)', 1, null, 16, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะพยาบาลศาสตร์', 'NUR01', 'อาคารคณะพยาบาลศาสตร์ (อาคารบริหาร)', 1, null, 18, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะพยาบาลศาสตร์', 'NUR02', 'อาคารคณะพยาบาลศาสตร์ (อาคารปฏิบัติการ)', 1, null, 19, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะพยาบาลศาสตร์', 'NUR03', 'อาคารคณะพยาบาลศาสตร์ (อาคารเรียนรวม)', 1, null, 20, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะสาธารณสุขศาสตร์', 'PHP01', 'อาคารคณะสาธารณสุขศาสตร์ (อาคารบริหาร)', 4, null, 21, 'สนับสนุนการเรียนการสอน', 'ชื่อเรียกอื่น: อาคารบริหาร คณะสาธารณสุขศาสตร์ (PH3 เดิม)')),
+  (app.import_building('คณะสาธารณสุขศาสตร์', 'PHP02', 'อาคารคณะสาธารณสุขศาสตร์ (อาคารปฏิบัติการ)', 4, null, 22, 'สนับสนุนการเรียนการสอน', 'ชื่อเรียกอื่น: อาคารสุขวิทยาสถิตย์ (PH2 เดิม — ต้องยืนยันว่าเป็นอาคารเดียวกัน)')),
+  (app.import_building('คณะสาธารณสุขศาสตร์', 'PHP03', 'อาคารคณะสาธารณสุขศาสตร์ (อาคารเรียนรวม)', 4, null, 23, 'สนับสนุนการเรียนการสอน', 'ชื่อเรียกอื่น: อาคารเรียนรวม คณะสาธารณสุขศาสตร์ (PH1 เดิม)')),
+  (app.import_building('คณะนิติศาสตร์', 'LAW', 'กลุ่มอาคารอุตสาหกรรมบริการ (อาคารคณะนิติศาสตร์)', 1, null, 97, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะสังคมศาสตร์', 'SOC', 'กลุ่มอาคารอุตสาหกรรมบริการ (อาคารคณะสังคมศาสตร์)', 1, null, 98, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('คณะบริหารธุรกิจ เศรษฐศาสตร์และการสื่อสาร', 'BEC', 'กลุ่มอาคารอุตสาหกรรมบริการ (อาคารคณะบริหารธุรกิจเศรษฐศาสตร์และการสื่อสาร)', 1, null, 99, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('กองอาคารสถานที่', 'CWW', 'อาคารสถานีบำบัดน้ำเสียส่วนกลาง', 1, null, 182, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองกลาง', 'CEN01', 'อาคารสำนักงานอธิการบดี', 1, null, 100, 'สนับสนุนการบริหาร', null)),
+  (app.import_building('กองอาคารสถานที่', 'CPB01', 'อาคารจอดรถ กลุ่มอาคารสาธารณสุข', 1, null, 199, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'CPB02', 'อาคารจอดรถ กลุ่มอาคารอุตสาหกรรมบริการ', 1, null, 200, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'OSP', 'อาคารเวทีแสดงละครกลางแจ้ง (เวทีศิลป์ศาลา)', 1, null, 137, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'CPB03', 'อาคารจอดรถบัส', 1, null, 198, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'CPS', 'อาคารสถานีตำรวจชุมชน', 1, null, 180, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'SSP', 'อาคารสถานีไฟฟ้าย่อย', 1, null, 181, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'HPT', 'อาคารหอพระเทพฯ', 1, null, 179, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'TFH01', 'บ้านพักอาจารย์1', 1, null, 177, 'อาคารอื่นๆ', null)),
+  (app.import_building('กองอาคารสถานที่', 'TFH02', 'บ้านพักอาจารย์2', 1, null, 178, 'อาคารอื่นๆ', null)),
+  (app.import_building('กองอาคารสถานที่', 'DWP', 'อาคารผลิตน้ำดื่ม', 1, null, 195, 'อาคารอื่นๆ', null)),
+  (app.import_building('กองส่งเสริมศิลปวัฒนธรรม', 'LMH01', 'อาคารพิพิธภัณฑ์ชีวิต (อาคารศูนย์บริการข้อมูล)', 1, null, 120, 'อาคารอื่นๆ', null)),
+  (app.import_building('กองส่งเสริมศิลปวัฒนธรรม', 'LMH02', 'อาคารพิพิธภัณฑ์ชีวิต (อาคารห้องน้ำชาย-หญิง)', 1, null, 121, 'อาคารอื่นๆ', null)),
+  (app.import_building('กองส่งเสริมศิลปวัฒนธรรม', 'LMH03', 'อาคารพิพิธภัณฑ์ชีวิต (อาคารบรรยาย)', 1, null, 122, 'อาคารอื่นๆ', null)),
+  (app.import_building('กองส่งเสริมศิลปวัฒนธรรม', 'LMH04', 'อาคารพิพิธภัณฑ์ชีวิต (อาคารรับรอง 1)', 1, null, 123, 'อาคารอื่นๆ', null)),
+  (app.import_building('กองส่งเสริมศิลปวัฒนธรรม', 'LMH05', 'อาคารพิพิธภัณฑ์ชีวิต (อาคารรับรอง 2)', 1, null, 124, 'อาคารอื่นๆ', null)),
+  (app.import_building('กองส่งเสริมศิลปวัฒนธรรม', 'LMH06', 'อาคารพิพิธภัณฑ์ชีวิต (อาคารสาธิต 1)', 1, null, 125, 'อาคารอื่นๆ', null)),
+  (app.import_building('กองส่งเสริมศิลปวัฒนธรรม', 'LMH07', 'อาคารพิพิธภัณฑ์ชีวิต (อาคารสาธิต 2)', 1, null, 126, 'อาคารอื่นๆ', null)),
+  (app.import_building('กองส่งเสริมศิลปวัฒนธรรม', 'LMH08', 'อาคารพิพิธภัณฑ์ชีวิต (อาคารสาธิต 3)', 1, null, 127, 'อาคารอื่นๆ', null)),
+  (app.import_building('กองส่งเสริมศิลปวัฒนธรรม', 'LMH09', 'อาคารพิพิธภัณฑ์ชีวิต (อาคารสาธิต 4)', 1, null, 128, 'อาคารอื่นๆ', null)),
+  (app.import_building('คณะแพทยศาสตร์', 'NSU01', 'กลุ่มอาคารโรงพยาบาล (อาคารสิรินธร)', 1, null, 1, 'สนับสนุนการบริการ', null)),
+  (app.import_building('คณะแพทยศาสตร์', 'NSU02', 'กลุ่มอาคารโรงพยาบาล (อาคารเฉลิมพระเกียรติ 7 รอบพระชนมพรรษา 1)', 1, null, 2, 'สนับสนุนการบริการ', null)),
+  (app.import_building('คณะแพทยศาสตร์', 'NSU03', 'กลุ่มอาคารโรงพยาบาล (อาคารเฉลิมพระเกียรติ 7 รอบพระชนมพรรษา 2)', 1, null, 3, 'สนับสนุนการบริการ', null)),
+  (app.import_building('คณะแพทยศาสตร์', 'NSU04', 'กลุ่มอาคารโรงพยาบาล (อาคารบริการ)', 1, null, 4, 'สนับสนุนการบริการ', null)),
+  (app.import_building('คณะแพทยศาสตร์', 'NSU05', 'กลุ่มอาคารโรงพยาบาล (อาคารรังสีรักษา)', 1, null, 5, 'สนับสนุนการบริการ', null)),
+  (app.import_building('คณะแพทยศาสตร์', 'NSU06', 'กลุ่มอาคารโรงพยาบาล (อาคารปั้มน้ำ)', 1, null, 6, 'สนับสนุนการบริการ', null)),
+  (app.import_building('คณะแพทยศาสตร์', 'NSU07', 'กลุ่มอาคารโรงพยาบาล (อาคารพักขยะ)', 1, null, 7, 'สนับสนุนการบริการ', null)),
+  (app.import_building('คณะแพทยศาสตร์', 'NSU08', 'กลุ่มอาคารโรงพยาบาล (อาคารจอดรถ)', 1, null, 8, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'NEW02', 'อาคารฟื้นฟูผู้สูงวัย', 1, null, 10, 'สนับสนุนการบริการ', null)),
+  (app.import_building('คณะศึกษาศาสตร์', 'NUDS01', 'อาคารโรงเรียนอนุบาลและประถมศึกษามหาวิทยาลัยนเรศวร อาคารโภชนาการ 2 (คชาธาร 1)', 1, null, 88, 'สนับสนุนการบริการ', null)),
+  (app.import_building('คณะศึกษาศาสตร์', 'NUDS02', 'อาคารโรงเรียนสาธิตมหาวิทยาลัยนเรศวร อาคารอินฟินิตี้ (คชาธาร 2)', 1, null, 89, 'สนับสนุนการบริการ', null)),
+  (app.import_building('วิทยาลัยพลังงานทดแทนและสมาร์ตกริดเทคโนโลยี', 'SER01', 'อาคาร สำนักงาน Sgtech', 1, null, 47, 'สนับสนุนการบริการ', null)),
+  (app.import_building('วิทยาลัยพลังงานทดแทนและสมาร์ตกริดเทคโนโลยี', 'SER02', 'อาคาร ASEAN-ONR-Smart Grid Simulator (ASIM)', 1, null, 48, 'สนับสนุนการบริการ', null)),
+  (app.import_building('วิทยาลัยพลังงานทดแทนและสมาร์ตกริดเทคโนโลยี', 'SER03', 'อาคาร ASEAN EU APEC Cooperation Office (AEA)', 1, null, 49, 'สนับสนุนการบริการ', null)),
+  (app.import_building('วิทยาลัยพลังงานทดแทนและสมาร์ตกริดเทคโนโลยี', 'SER04', 'อาคาร U-MAC Smart City & Co-Working Space', 1, null, 50, 'สนับสนุนการบริการ', null)),
+  (app.import_building('วิทยาลัยพลังงานทดแทนและสมาร์ตกริดเทคโนโลยี', 'SER05', 'อาคาร NU Digital Innovation & Research Labs (NDIR)', 1, null, 51, 'สนับสนุนการวิจัย/ปฏิบัติการ', null)),
+  (app.import_building('วิทยาลัยพลังงานทดแทนและสมาร์ตกริดเทคโนโลยี', 'SER06', 'อาคาร SEPCON LAB', 1, null, 52, 'สนับสนุนการวิจัย/ปฏิบัติการ', null)),
+  (app.import_building('วิทยาลัยพลังงานทดแทนและสมาร์ตกริดเทคโนโลยี', 'SER07', 'อาคาร Testing', 1, null, 53, 'สนับสนุนการวิจัย/ปฏิบัติการ', null)),
+  (app.import_building('วิทยาลัยพลังงานทดแทนและสมาร์ตกริดเทคโนโลยี', 'SER08', 'อาคาร สัมมนา', 1, null, 54, 'สนับสนุนการบริการ', null)),
+  (app.import_building('วิทยาลัยพลังงานทดแทนและสมาร์ตกริดเทคโนโลยี', 'SER09', 'อาคาร Solar Energy Learning and Exhibition Center', 1, null, 55, 'สนับสนุนการบริการ', null)),
+  (app.import_building('วิทยาลัยพลังงานทดแทนและสมาร์ตกริดเทคโนโลยี', 'SER10', 'อาคาร 10 kW', 1, null, 56, 'สนับสนุนการวิจัย/ปฏิบัติการ', null)),
+  (app.import_building('วิทยาลัยพลังงานทดแทนและสมาร์ตกริดเทคโนโลยี', 'SER11', 'อาคาร ควบคุม PV Micro-Grid', 1, null, 57, 'สนับสนุนการวิจัย/ปฏิบัติการ', null)),
+  (app.import_building('วิทยาลัยพลังงานทดแทนและสมาร์ตกริดเทคโนโลยี', 'SER12', 'อาคาร Pyramid', 1, null, 58, 'อาคารอื่นๆ', null)),
+  (app.import_building('วิทยาลัยพลังงานทดแทนและสมาร์ตกริดเทคโนโลยี', 'SER13', 'อาคารสำนักงานอาจารย์ Advisor Office 1', 1, null, 59, 'สนับสนุนการบริการ', null)),
+  (app.import_building('วิทยาลัยพลังงานทดแทนและสมาร์ตกริดเทคโนโลยี', 'SER14', 'อาคารสำนักงานอาจารย์ Advisor Office 2', 1, null, 60, 'สนับสนุนการบริการ', null)),
+  (app.import_building('วิทยาลัยพลังงานทดแทนและสมาร์ตกริดเทคโนโลยี', 'SER15', 'อาคารสำนักงานอาจารย์ Advisor Office 3', 1, null, 61, 'สนับสนุนการบริการ', null)),
+  (app.import_building('วิทยาลัยพลังงานทดแทนและสมาร์ตกริดเทคโนโลยี', 'SER16', 'อาคารสำนักงานอาจารย์ Advisor Office 4', 1, null, 62, 'สนับสนุนการบริการ', null)),
+  (app.import_building('วิทยาลัยพลังงานทดแทนและสมาร์ตกริดเทคโนโลยี', 'SER17', 'อาคารสำนักงานอาจารย์ Advisor Office 5', 1, null, 63, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองส่งเสริมการบริการวิชาการ', 'RLC', 'อาคารวิชชาลัยข้าวและชาวนา', 1, null, 203, 'สนับสนุนการเรียนการสอน', null)),
+  (app.import_building('กองอาคารสถานที่', 'HWB', 'อาคารเก็บขยะมีพิษ', 1, null, 117, 'สนับสนุนการบริการ', null)),
+  (app.import_building('คณะวิศวกรรมศาสตร์', 'ENG10', 'อาคารคณะวิศวกรรมศาสตร์ (อาคารปฏิบัติการวิศวกรรมเคมี)', 1, null, 73, 'สนับสนุนการวิจัย/ปฏิบัติการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'WTP01', 'อาคารโรงผลิตน้ำประปา (อาคารเก็บสารเคมี)', 1, null, 183, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'WTP02', 'อาคารโรงผลิตน้ำประปา (ห้องควบคุมการผลิต)', 1, null, 184, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'WTP03', 'อาคารโรงผลิตน้ำประปา (ระบบผลิตน้ำประปา 300 ลบ.ม./ชม.)', 1, null, 185, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'WTP04', 'อาคารโรงผลิตน้ำประปา (ถังเก็บน้ำ 1-2)', 1, null, 186, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'WTP12', 'อาคารโรงผลิตน้ำประปา (ระบบผลิตน้ำประปา 60 ลบ.ม./ชม.)', 1, null, 187, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'WTP05', 'อาคารโรงผลิตน้ำประปา (อาคารสูบน้ำถังสูง 1)', 1, null, 188, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'WTP06', 'อาคารโรงผลิตน้ำประปา (อาคารสูบน้ำถังสูง 2)', 1, null, 189, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'WTP07', 'อาคารโรงผลิตน้ำประปา (อาคารสำนักงานและห้องบรรยาย)', 1, null, 190, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'WTP08', 'อาคารโรงผลิตน้ำประปา (สถานีสูบน้ำดิบ 1)', 1, null, 191, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'WTP09', 'อาคารโรงผลิตน้ำประปา (สถานีสูบน้ำดิบ 2)', 1, null, 192, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'WTP10', 'อาคารโรงผลิตน้ำประปา (อาคารสูบน้ำถังสูง 3)', 1, null, 193, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'WTP11', 'อาคารโรงผลิตน้ำประปา (ถังเก็บน้ำ 3)', 1, null, 194, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'RWB', 'อาคารห้องน้ำชาย-หญิง ลาดจอดรถหอพัก 14-15', 1, null, 201, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'TSI01', 'อาคารสถานีขนส่งมวลชน 1 (ที่จอดรถไฟฟ้า)', 1, null, 196, 'สนับสนุนการบริการ', null)),
+  (app.import_building('กองอาคารสถานที่', 'TSI02', 'อาคารสถานีขนส่งมวลชน 2 (ที่รอรถโดยสาร)', 1, null, 197, 'สนับสนุนการบริการ', null))
+) v(r);
+
+-- ---------- ตรวจผล: จำนวนอาคารต่อหน่วยงาน (รวมต้องได้ 204 อาคาร) ----------
+select coalesce(o.name_th, 'รวมทั้งหมด') as หน่วยงานเจ้าของ, count(*) as จำนวนอาคาร
+  from public.buildings b join public.organizations o on o.id = b.organization_id
+ where b.code in ('MAS01', 'MAS02', 'MAS03', 'MAS04', 'HSU01', 'HSU02', 'HSU03', 'HSU04', 'HSU05', 'HSU06', 'NIC', 'PHA01', 'PHA02', 'PHA03', 'PHA04', 'PHA05', 'PHA06', 'PHA07', 'PHA08', 'EDU01', 'EDU02', 'DOR01', 'DOR02', 'DOR03', 'DOR04', 'DOR05', 'DOR06', 'DOR07', 'DOR08', 'DOR09', 'DOR10', 'DOR11', 'DOR12', 'DOR14', 'DOR15', 'AGI01', 'AGI02', 'AGI03', 'AGI04', 'AGI06', 'AGI07', 'AGI08', 'AGI09', 'AGI10', 'ENG01', 'ENG02', 'ENG03', 'ENG04', 'ENG05', 'ENG06', 'ENG07', 'ENG08', 'ENG09', 'AMS01', 'SCI01', 'SCI02', 'SCI03', 'SCI04', 'SCI05', 'SCI06', 'SCI07', 'SCI08', 'SCI09', 'SCI10', 'STD01', 'STD02', 'GYM01', 'GYM02', 'GYM03', 'GYM04', 'GYM05', 'GYM06', 'SA01', 'SA02', 'SA03', 'SA04', 'SA05', 'NUAC', 'CIT', 'DRS01', 'DRS02', 'DRS03', 'DRS04', 'DRS05', 'DRS06', 'DRS07', 'DRS08', 'DRS09', 'DRS10', 'DRS11', 'DRS12', 'DRS13', 'DRS14', 'DRS15', 'DRS16', 'NSA', 'NSQ', 'NSC', 'LIB01', 'LIB02', 'ARC01', 'ARC02', 'ARC03', 'QSA', 'QSB', 'QSC', 'QSD', 'DBA', 'CAR', 'NAN01', 'NAN02', 'NAN03', 'NAN04', 'NAN05', 'NAN06', 'NAN07', 'NAN08', 'NAN09', 'KNC', 'NEW01', 'LOG', 'AHS04', 'DEN01', 'DEN02', 'DEN03', 'AHS01', 'AHS02', 'AHS03', 'NUR01', 'NUR02', 'NUR03', 'PHP01', 'PHP02', 'PHP03', 'LAW', 'SOC', 'BEC', 'CWW', 'CEN01', 'CPB01', 'CPB02', 'OSP', 'CPB03', 'CPS', 'SSP', 'HPT', 'TFH01', 'TFH02', 'DWP', 'LMH01', 'LMH02', 'LMH03', 'LMH04', 'LMH05', 'LMH06', 'LMH07', 'LMH08', 'LMH09', 'NSU01', 'NSU02', 'NSU03', 'NSU04', 'NSU05', 'NSU06', 'NSU07', 'NSU08', 'NEW02', 'NUDS01', 'NUDS02', 'SER01', 'SER02', 'SER03', 'SER04', 'SER05', 'SER06', 'SER07', 'SER08', 'SER09', 'SER10', 'SER11', 'SER12', 'SER13', 'SER14', 'SER15', 'SER16', 'SER17', 'RLC', 'HWB', 'ENG10', 'WTP01', 'WTP02', 'WTP03', 'WTP04', 'WTP12', 'WTP05', 'WTP06', 'WTP07', 'WTP08', 'WTP09', 'WTP10', 'WTP11', 'RWB', 'TSI01', 'TSI02')
+ group by rollup (o.name_th) order by o.name_th nulls last;

@@ -128,7 +128,9 @@ def q(v):
 # ------------------------------------------------------------------ SQL
 def build_sql():
     mig = (ROOT / "supabase/migrations/20261108000009_bulk_import.sql").read_text()
+    mig += "\n\n" + (ROOT / "supabase/migrations/20261108000010_ready_data_helpers.sql").read_text()
     mig += "\n\n" + (ROOT / "supabase/migrations/20261109000011_building_details.sql").read_text()
+    mig += "\n\n" + (ROOT / "supabase/migrations/20261109000012_sheets_api.sql").read_text()
     out = [
         "-- =====================================================================",
         f"-- NU Safety Inspection — นำเข้าหน่วยงาน {len(ORGS)} หน่วยงาน + อาคารทั้งมหาวิทยาลัย {len(BUILDINGS)} อาคาร",
