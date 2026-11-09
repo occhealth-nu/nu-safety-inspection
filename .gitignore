@@ -12,3 +12,4 @@ tsconfig.tsbuildinfo
 *.zip
 docs/manual/.capture-state.json
 dist/
+__pycache__/
