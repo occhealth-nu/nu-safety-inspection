@@ -3197,3 +3197,22 @@ end $$;
 revoke execute on function app.rename_building_code(text, text) from public, anon, authenticated;
 
 notify pgrst, 'reload schema';
+
+-- สถานะฐานข้อมูลสำหรับหน้า /setup-check (ตัวเลขสรุปเท่านั้น ไม่มีข้อมูลรายบุคคล)
+-- ใช้ตรวจว่าเว็บบน Vercel เชื่อมกับโปรเจกต์ Supabase ที่นำเข้าข้อมูลแล้วจริง
+create or replace function public.system_status() returns jsonb
+language sql stable security definer set search_path = public as $$
+  select jsonb_build_object(
+    'schema_building_locations', to_regprocedure('public.building_safety_overview(date,date,uuid)') is not null,
+    'schema_building_details', exists (select 1 from information_schema.columns
+                                        where table_schema = 'public' and table_name = 'buildings' and column_name = 'building_no'),
+    'organizations', (select count(*) from public.organizations where is_active),
+    'buildings', (select count(*) from public.buildings where is_active),
+    'assets', (select count(*) from public.assets where status = 'active'),
+    'users', (select count(*) from public.profiles where is_active),
+    'demo_data', exists (select 1 from public.organizations where name_th like '%(ตัวอย่าง)')
+                 or exists (select 1 from public.profiles where lower(email) like '%@demo.example.com'))
+$$;
+grant execute on function public.system_status() to anon, authenticated;
+
+notify pgrst, 'reload schema';

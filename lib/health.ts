@@ -14,12 +14,14 @@ async function fetchJson(url: string, key: string, ms = 6000) {
   } finally { clearTimeout(t); }
 }
 
+function projectRef(url: string) { const m = /^https:\/\/([a-z0-9]+)\.supabase\.co/.exec(url); return m?.[1] ?? ""; }
+
 /** ตรวจการตั้งค่าระบบ — ไม่แสดงค่าลับใด ๆ */
 export async function runHealthChecks(requestHost?: string): Promise<Check[]> {
   const checks: Check[] = [];
   const problems = configProblems();
   checks.push({ name: "NEXT_PUBLIC_SUPABASE_URL", ok: !!env.supabaseUrl && isValidHttpUrl(env.supabaseUrl),
-    detail: env.supabaseUrl ? `ใช้ค่า ${env.supabaseUrl}` : "ยังไม่ได้ตั้งค่า" });
+    detail: env.supabaseUrl ? `ใช้ค่า ${env.supabaseUrl}${projectRef(env.supabaseUrl) ? ` — รหัสโปรเจกต์ (Project Ref) ${projectRef(env.supabaseUrl)} ต้องตรงกับลิงก์ supabase.com/dashboard/project/${projectRef(env.supabaseUrl)} ที่ใช้รันไฟล์ SQL` : ""}` : "ยังไม่ได้ตั้งค่า" });
   checks.push({ name: "NEXT_PUBLIC_SUPABASE_ANON_KEY", ok: !problems.some((p) => p.includes("ANON_KEY")),
     detail: problems.find((p) => p.includes("ANON_KEY")) ?? `รูปแบบถูกต้อง (${env.supabaseAnonKey.startsWith("sb_") ? "Publishable key" : "anon key"})` });
   const service = cleanValue(process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -49,6 +51,22 @@ export async function runHealthChecks(requestHost?: string): Promise<Check[]> {
       checks.push({ name: "ติดตั้งฐานข้อมูล (ไฟล์ 01–02)", ok: db.status === 200 && Array.isArray(db.body) && db.body.length === 1,
         detail: db.status === 200 ? (Array.isArray(db.body) && db.body.length ? `ติดตั้งแล้ว (โดเมนที่อนุญาต: ${(db.body[0] as { allowed_email_domains?: string[] }).allowed_email_domains?.join(", ") ?? "-"})` : "พบตารางแต่ไม่มีข้อมูลตั้งต้น — รันไฟล์ 01 ใหม่")
           : db.status === 404 ? "ยังไม่ได้ติดตั้ง — รัน deploy/01_install_database.sql และ 02 ใน Supabase SQL Editor" : `ตอบกลับสถานะ ${db.status}` });
+      // ข้อมูลในโปรเจกต์ Supabase ที่เว็บนี้เชื่อมอยู่ — ใช้เทียบกับโปรเจกต์ที่รันไฟล์ SQL
+      const st = await fetchJson(`${env.supabaseUrl}/rest/v1/rpc/system_status`, env.supabaseAnonKey);
+      const v = st.body as { schema_building_locations?: boolean; schema_building_details?: boolean; organizations?: number;
+        buildings?: number; assets?: number; users?: number; demo_data?: boolean } | null;
+      if (st.status === 200 && v) {
+        checks.push({ name: "อัปเกรดฐานข้อมูล (ไฟล์ 05)", ok: !!v.schema_building_locations,
+          detail: v.schema_building_locations ? "อัปเกรดแล้ว" : "ยังไม่ได้รัน 05_upgrade_building_locations.sql ในโปรเจกต์นี้" });
+        checks.push({ name: "ข้อมูลหน่วยงาน/อาคาร (ไฟล์ 06–07)", ok: !!v.schema_building_details && (v.buildings ?? 0) >= 204,
+          detail: `หน่วยงาน ${v.organizations} · อาคาร ${v.buildings} · จุดตรวจ ${v.assets} · ผู้ใช้ ${v.users}` +
+            ((v.buildings ?? 0) >= 204 ? "" : " — ยังไม่ครบ 204 อาคาร: รันไฟล์ 06 และ 07 ในโปรเจกต์นี้") });
+        checks.push({ name: "ไม่มีข้อมูลตัวอย่าง (ไฟล์ 08)", ok: !v.demo_data,
+          detail: v.demo_data ? "ยังมีข้อมูล/บัญชีตัวอย่าง — รัน 08_remove_demo_data.sql" : "ไม่มีข้อมูลตัวอย่าง" });
+      } else {
+        checks.push({ name: "ข้อมูลหน่วยงาน/อาคาร (ไฟล์ 05–08)", ok: false,
+          detail: "โปรเจกต์ Supabase นี้ยังไม่ได้รันไฟล์ 06_import_nu_data.sql — ถ้ารันไปแล้ว แปลว่ารันในโปรเจกต์อื่น (ดูรหัสโปรเจกต์ด้านบน)" });
+      }
     } catch (e) {
       checks.push({ name: "เชื่อมต่อ Supabase", ok: false, detail: `เชื่อมต่อไม่ได้: ${(e as Error).name === "AbortError" ? "หมดเวลา (Supabase อาจมีปัญหาชั่วคราว)" : (e as Error).message}` });
     }
