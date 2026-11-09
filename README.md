@@ -39,6 +39,7 @@ npm run dev
 | **[docs/DEPLOY_GUIDE.md](docs/DEPLOY_GUIDE.md)** | **คู่มือขึ้นระบบจริงทีละขั้น สำหรับผู้ไม่มีพื้นฐาน (Supabase + GitHub + Vercel, คัดลอก–วาง)** |
 | [docs/INSTALL.md](docs/INSTALL.md) | ติดตั้ง ตั้งค่า ผู้ใช้คนแรก Cron SMTP SSO และ checklist ก่อนใช้งานจริง |
 | **[docs/manual/](docs/manual)** | **คู่มือการใช้งานฉบับสมบูรณ์มีภาพประกอบ (PDF) — ฉบับเว็บเปิดได้โดยไม่ต้องเข้าสู่ระบบที่ `https://<โดเมน>/manual`** |
+| **[docs/INSTALL_FRESH_TH.md](docs/INSTALL_FRESH_TH.md)** ([PDF](docs/INSTALL_FRESH_TH.pdf)) | **ติดตั้งใหม่ทั้งหมด: ลบข้อมูลเดิม (RESET) → ติดตั้ง → ตั้งผู้ดูแล → ตรวจผล · สร้างชุดไฟล์ด้วย `bash scripts/build-install-package.sh`** |
 | **[docs/import/README.md](docs/import/README.md)** | **ชุดข้อมูลพร้อม Deploy: หน่วยงาน 43 + อาคาร 204 อาคาร + ชุดพร้อมใช้คณะสาธารณสุขศาสตร์ + แบบฟอร์มผู้ใช้ (ลำดับไฟล์ 05→06→07→08→00)** |
 | **[docs/UPGRADE_BUILDING_LOCATIONS.md](docs/UPGRADE_BUILDING_LOCATIONS.md)** | **อัปเกรดระบบที่ใช้งานอยู่: ระบบตรวจสอบความปลอดภัยอาคาร (รัน `deploy/05_upgrade_building_locations.sql`)** |
 | [docs/MANUAL_ADMIN.md](docs/MANUAL_ADMIN.md) | คู่มือผู้ดูแล (ฉบับย่อ) |
